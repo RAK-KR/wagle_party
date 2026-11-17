@@ -28,8 +28,9 @@ export function button(ctx, inp, r, label, o = {}) {
   const hot = !o.disabled && inRect(r, inp.px, inp.py) && !inp.touch;
   const sel = o.selected;
   ctx.save();
-  ctx.fillStyle = o.disabled ? '#24202c' : sel ? (o.color || COL.accent) : hot ? COL.line : (o.primary ? (o.color || COL.accent) : COL.panel2);
+  ctx.fillStyle = o.disabled ? '#24202c' : sel ? (o.color || COL.accent) : o.primary ? (o.color || COL.accent) : hot ? COL.line : COL.panel2;
   ctx.fillRect(r.x, r.y, r.w, r.h);
+  if (hot && (o.primary || sel)) { ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
   if (o.focus) { ctx.strokeStyle = COL.text; ctx.lineWidth = 3; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
   if (!sel && !o.primary && !o.disabled) { ctx.fillStyle = o.color || COL.accent; ctx.fillRect(r.x, r.y, 4, r.h); }
   const dark = (sel || o.primary) && !o.disabled;

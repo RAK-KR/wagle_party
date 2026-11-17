@@ -70,8 +70,9 @@ export function matchScenes(game) {
       setTouchLayout({ stick: false, a: false }); playMusic('menu');
       const target = MINIGAMES.findIndex(m => m.id === M.queue[M.round]);
       const spins = 3 + Math.floor(M.rng.next() * 2);
-      rl = { t0: game.t, from: M.rng.next() * MINIGAMES.length, to: spins * MINIGAMES.length + target, lastCell: -1, done: false };
-      rl.to += Math.floor(rl.from);
+      const N = MINIGAMES.length, from = M.rng.next() * N;
+      // land exactly on a card whose index (mod N) is the chosen game
+      rl = { t0: game.t, from, to: (Math.ceil(from / N) + spins) * N + target, lastCell: -1, done: false };
     },
     update(dt) {
       const e = (game.t - rl.t0) / 2.6;
@@ -248,18 +249,15 @@ export function matchScenes(game) {
       if (pl.phase === 'count') {
         const c = Math.ceil(3 - e), f = 1 - (e % 1);
         ctx.fillStyle = 'rgba(10,8,16,0.35)'; ctx.fillRect(0, 0, W, H);
-        ctx.save(); ctx.translate(W / 2, H / 2); const s = 0.8 + easeOutBack(Math.min(1, (1 - f) / 0.35)) * 0.4; ctx.scale(s, s);
-        text(ctx, String(c), 0, 0, { size: 170, title: true, align: 'center', base: 'middle', color: COL.accent, stroke: '#1b1824', strokeW: 18 });
-        ctx.restore();
+        const s = 0.8 + easeOutBack(Math.min(1, (1 - f) / 0.35)) * 0.4;
+        bigBanner(ctx, String(c), s, 1, COL.accent, 150);
         text(ctx, mg.rule, W / 2, H / 2 + 140, { size: 24, weight: 800, align: 'center', stroke: '#1b1824', strokeW: 7 });
       } else if (pl.phase === 'run' && game.t - pl.t0 < 3.7) {
         const k = (game.t - pl.t0 - 3) / 0.7;
-        text(ctx, '시작!', W / 2, H / 2, { size: 130, title: true, align: 'center', base: 'middle', color: COL.accent, stroke: '#1b1824', strokeW: 16, alpha: 1 - k });
+        bigBanner(ctx, '시작!', 1 + k * 0.15, 1 - k, COL.accent, 110);
       } else if (pl.phase === 'end') {
         const k = easeOutBack(Math.min(1, (game.t - pl.endT) / 0.35));
-        ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(k, k);
-        text(ctx, '끝!', 0, 0, { size: 140, title: true, align: 'center', base: 'middle', color: '#fff', stroke: '#1b1824', strokeW: 18 });
-        ctx.restore();
+        bigBanner(ctx, '끝!', k, 1, '#ffffff', 110);
       }
     },
     renderOverlay: (ctx, inp) => pauseRender(ctx, inp),
@@ -445,6 +443,19 @@ export function matchScenes(game) {
   };
 
   return { matchStart, roulette, intro, play, result, standings, podium, practiceEnd };
+}
+
+// Big centered word on a dark band; thin outline so letter holes stay open
+function bigBanner(ctx, str, scale, alpha, color, size) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  const bh = size * 1.5 * Math.min(1, scale);
+  ctx.fillStyle = 'rgba(14,12,19,0.72)'; ctx.fillRect(0, H / 2 - bh / 2, W, bh);
+  ctx.fillStyle = color; ctx.fillRect(0, H / 2 - bh / 2, W, 4); ctx.fillRect(0, H / 2 + bh / 2 - 4, W, 4);
+  ctx.translate(W / 2, H / 2); ctx.scale(scale, scale);
+  text(ctx, str, 0, size * 0.04, { size, title: true, align: 'center', base: 'middle', color, shadow: 'rgba(0,0,0,0.55)', shadowY: 6 });
+  ctx.restore();
 }
 
 export function placesFrom(scores) {

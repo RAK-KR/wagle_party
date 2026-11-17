@@ -100,13 +100,17 @@ function frame(now) {
     const inp = readInput();
     if (inp.mP) toggleMute();
     const steps = game.speed > 1 ? Math.round(game.speed) : 1;
+    const sceneBefore = game.scene;
     for (let k = 0; k < steps; k++) {
       game.t += dt;
-      const used = game.scene.allowEmote === false ? false : game.emotes.handleLocal(inp);
-      if (used) inp.pP = false;
-      game.scene.update(dt, inp);
-      if (k === 0) { inp.aP = false; inp.pP = false; inp.escP = false; inp.gP = false; inp.leftP = inp.rightP = inp.upP = inp.downP = false; }
+      // extra fast-forward steps must not repeat this frame's presses
+      const sInp = k === 0 ? inp : { ...inp, aP: false, pP: false, escP: false, gP: false, leftP: false, rightP: false, upP: false, downP: false, emoteTouchP: false };
+      const used = game.scene.allowEmote === false ? false : game.emotes.handleLocal(sInp);
+      if (used) sInp.pP = false;
+      game.scene.update(dt, sInp);
     }
+    // a key/click that already changed the scene in update must not also click the new scene's buttons
+    if (game.scene !== sceneBefore) { inp.pP = false; inp.aP = false; }
     // draw
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#0e0c13'; ctx.fillRect(0, 0, canvas.width, canvas.height);

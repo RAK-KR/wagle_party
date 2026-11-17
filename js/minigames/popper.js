@@ -33,7 +33,7 @@ export default {
       const type = roll < 0.13 ? 'gold' : roll < 0.33 ? 'bomb' : 'normal';
       st.balloons.push({
         id: st.id++, type, x: 110 + rng.next() * (W - 220), y: FLOOR + 50,
-        vy: -(type === 'gold' ? 150 : 85) - rng.next() * 60 - st.t * 1.5, ph: rng.next() * 6, col: rng.pick(PASTEL), alive: true,
+        vy: -(type === 'gold' ? 120 : 70) - rng.next() * 45 - st.t * 1.0, ph: rng.next() * 6, col: rng.pick(PASTEL), alive: true,
       });
     }
     for (const b of st.balloons) { b.y += b.vy * dt; b.x += Math.sin(st.t * 2 + b.ph) * 20 * dt; }
@@ -76,23 +76,28 @@ export default {
       for (const b of st.balloons) {
         if (b.y > FLOOR - 40 || b.y < TOPY + 20) continue;
         let v = TYPES[b.type].pts;
-        if (b.type === 'bomb' && rng.next() < (1 - k) * 0.08) v = 2; // easy bots sometimes go for a bomb by mistake
         if (v < 0) continue;
+        // skip balloons with a bomb right next to them (a click could hit the bomb)
+        if (st.balloons.some(o => o.type === 'bomb' && Math.hypot(o.x - b.x, o.y - b.y) < TYPES.bomb.r + TYPES[b.type].r)) continue;
         const s = v * 140 - Math.hypot(b.x - c.x, b.y - c.y) + rng.next() * 120;
         if (s > bs) { bs = s; best = b; }
       }
-      tgt = best; c.tid = best ? best.id : -1; c.wait = 0.22 + (1 - k) * 0.35 + rng.next() * 0.2;
+      tgt = best; c.tid = best ? best.id : -1; c.wait = 0.42 + (1 - k) * 0.45 + rng.next() * 0.3;
     }
     let click = false;
     if (tgt) {
       const lead = 0.12;
       const tx = tgt.x, ty = tgt.y + tgt.vy * lead;
       const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
-      const sp = (380 + k * 560) / 60;
+      const sp = (190 + k * 260) / 60;
       const step = Math.min(d, sp);
       c.x += (dx / (d || 1)) * step + (rng.next() - 0.5) * (1 - k) * 6;
       c.y += (dy / (d || 1)) * step + (rng.next() - 0.5) * (1 - k) * 6;
-      if (d < TYPES[tgt.type].r * (0.5 + (1 - k) * 0.4) && c.wait <= 0) { click = true; c.wait = 0.08 + (1 - k) * 0.25; c.tid = -1; }
+      // click only if the balloon under the cursor really is the target (never a bomb)
+      let under = null, ud = 1e9;
+      for (const b of st.balloons) { const dd = Math.hypot(b.x - c.x, b.y - c.y); if (dd < TYPES[b.type].r + 8 && dd < ud) { ud = dd; under = b; } }
+      if (under && under.type === 'bomb') c.tid = -1;
+      else if (d < TYPES[tgt.type].r * 0.6 && c.wait <= 0 && under === tgt) { click = true; c.wait = 0.25 + (1 - k) * 0.3 + rng.next() * 0.15; c.tid = -1; }
     }
     return { px: c.x, py: c.y, pP: click };
   },

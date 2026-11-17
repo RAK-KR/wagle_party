@@ -19,9 +19,11 @@ export default {
     return { t: 0, round: 0, phase: 'show', pt: 0, targets, stops: [null, null, null, null], err: [0, 0, 0, 0], history: [], botStop: [0, 0, 0, 0], needBot: true };
   },
   newBotTimes(st, game, rng) {
-    const sd = [0.5, 0.24, 0.1][Math.round(game.diff.k * 3) - 1] ?? 0.24;
+    // human-like: error grows with the target time, plus a personal habit of stopping early or late
+    const sd = [0.95, 0.6, 0.35][Math.round(game.diff.k * 3) - 1] ?? 0.6;
     const T = st.targets[st.round];
-    st.botStop = [0, 1, 2, 3].map(() => Math.max(0.6, T + rng.gauss() * sd * (0.8 + T / 10)));
+    if (!st.habit) st.habit = [0, 1, 2, 3].map(() => rng.gauss() * sd * 0.5);
+    st.botStop = [0, 1, 2, 3].map(i => Math.max(0.8, T + st.habit[i] + rng.gauss() * sd * (0.6 + T / 10)));
   },
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt; st.pt += dt;
