@@ -1,0 +1,16 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0e0c13;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas#game {
+  display: block;
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
