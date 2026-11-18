@@ -1,4 +1,4 @@
-import { W } from './config.js';
+import { getView } from './input.js';
 // Chat input box (a real text field so Korean typing works). Enter sends, Esc closes.
 let box = null, field = null, onSend = null;
 
@@ -25,14 +25,20 @@ function build() {
 }
 
 // at: optional rect in game coordinates (1280x720) to place the field over; default is bottom center
+// The canvas fills the whole window and letterboxes inside itself, so use the game view (scale + offset), not the canvas box.
+let anchor = null;
+function place() {
+  if (!box) return;
+  if (anchor) {
+    const v = getView();
+    Object.assign(box.style, { left: (v.ox + anchor.x * v.scale) + 'px', top: (v.oy + anchor.y * v.scale) + 'px', bottom: 'auto', width: (anchor.w * v.scale) + 'px', transform: 'none' });
+  } else Object.assign(box.style, { left: '50%', top: 'auto', bottom: '18px', width: '', transform: 'translateX(-50%)' });
+}
+window.addEventListener('resize', place);
 export function openChat(send, at = null) {
   if (!box) build();
-  onSend = send;
-  const cv = document.getElementById('game');
-  if (at && cv) {
-    const b = cv.getBoundingClientRect(), k = b.width / W;
-    Object.assign(box.style, { left: (b.left + at.x * k) + 'px', top: (b.top + at.y * k) + 'px', bottom: 'auto', width: (at.w * k) + 'px', transform: 'none' });
-  } else Object.assign(box.style, { left: '50%', top: 'auto', bottom: '18px', width: '', transform: 'translateX(-50%)' });
+  onSend = send; anchor = at;
+  place();
   box.style.display = 'block';
   setTimeout(() => field.focus(), 0);
 }

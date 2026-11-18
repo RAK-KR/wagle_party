@@ -1,5 +1,5 @@
 // Shared constants
-export const VERSION = '1.2';   // bump on every upload (tools/stamp.py also uses it)
+export const VERSION = '1.3';   // bump on every upload (tools/stamp.py also uses it)
 export const W = 1280, H = 720;
 export const TITLE = 'WAGLE PARTY';
 export const TITLE_KO = '와글와글 파티';

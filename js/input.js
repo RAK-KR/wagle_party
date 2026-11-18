@@ -3,6 +3,7 @@ import { W, H, FONT } from './config.js';
 
 const view = { scale: 1, ox: 0, oy: 0 };
 export function setView(scale, ox, oy) { view.scale = scale; view.ox = ox; view.oy = oy; }
+export function getView() { return view; }   // screen position of the 1280x720 game area
 function toLogical(cx, cy) { return { x: (cx - view.ox) / view.scale, y: (cy - view.oy) / view.scale }; }
 
 const keys = new Set();

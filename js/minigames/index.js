@@ -15,10 +15,10 @@ import bumper from './bumper.js';
 import popper from './popper.js';
 import stopwatch from './stopwatch.js';
 import parade from './parade.js';
-import cannon from './cannon.js';
+import seesaw from './seesaw.js';
 import coins from './coins.js';
 import laser from './laser.js';
-import crown from './crown.js';
+import paint from './paint.js';
 import kart from './kart.js';
 import flight from './flight.js';
 import finder from './finder.js';
@@ -33,11 +33,11 @@ import curling from './curling.js';
 
 // order = practice list order (grouped by control type)
 export const MINIGAMES = [
-  tiles, coins, laser, crown,          // 캐릭터 조작
+  tiles, coins, laser, paint,          // 캐릭터 조작
   bumper, kart, flight,                // 탈것
   popper, finder, numbers,             // 마우스 / 터치
   stopwatch, redlight, beat, stack,    // 타이밍
   parade, simon, cups,                 // 기억 / 관찰
-  cannon, tug, curling,                // 물리
+  seesaw, tug, curling,                // 물리
 ];
 export const byId = (id) => MINIGAMES.find(m => m.id === id);
