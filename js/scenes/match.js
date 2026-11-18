@@ -15,14 +15,18 @@ export function matchScenes(game) {
   let helpOpen = true;
   try { helpOpen = localStorage.getItem('wagle.help') === '1'; } catch (e) { }
 
+  const online = () => !!game.online && !!game.online.role;
+  const canControl = () => !online() || game.online.role === 'host';
   const isLast = () => !M.practice && M.round === M.rounds - 1 && M.rounds > 1;
   const mult = () => (isLast() ? 2 : 1);
 
   function buildQueue(n) {
     const q = [];
     const type = (id) => byId(id).typeLabel.split(' ')[0];
+    const humans = game.players.filter(p => !p.bot).length;
+    const allowed = MINIGAMES.filter(m => !(m.id === 'tug' && online() && humans < 4)).map(m => m.id);
     while (q.length < n) {
-      const bag = M.rng.shuffle(MINIGAMES.map(m => m.id));
+      const bag = M.rng.shuffle(allowed);
       // avoid the same control type twice in a row where possible
       for (let k = 0; k < bag.length; k++) {
         const prev = k ? bag[k - 1] : q[q.length - 1];
@@ -43,16 +47,18 @@ export function matchScenes(game) {
 
   // ---------- pause overlay shared by intro/play ----------
   function pauseUpdate(inp) {
-    if (inp.escP) { paused = !paused; sfx.click(); return true; }
-    return paused;
+    if (inp.escP) { paused = !paused; sfx.click(); return !online(); }
+    return online() ? false : paused;   // online: the menu never stops the game for others
   }
   function pauseRender(ctx, inp) {
     if (!paused) return;
     ctx.fillStyle = 'rgba(10,8,16,0.78)'; ctx.fillRect(0, 0, W, H);
-    text(ctx, '일시 정지', W / 2, 250, { size: 56, title: true, align: 'center' });
+    text(ctx, online() ? '메뉴' : '일시 정지', W / 2, 250, { size: 56, title: true, align: 'center' });
+    if (online()) text(ctx, '온라인에서는 게임이 멈추지 않습니다', W / 2, 290, { size: 17, weight: 700, align: 'center', color: COL.sub });
     if (button(ctx, inp, { x: W / 2 - 160, y: 310, w: 320, h: 62 }, '계속하기', { primary: true, size: 24 })) { paused = false; sfx.click(); }
-    if (button(ctx, inp, { x: W / 2 - 160, y: 390, w: 320, h: 62 }, M.practice ? '연습 목록으로' : '그만두고 처음으로', { size: 22 })) {
-      paused = false; sfx.click(); game.go(M.practice ? 'practice' : 'title');
+    if (button(ctx, inp, { x: W / 2 - 160, y: 390, w: 320, h: 62 }, online() ? '방 나가기' : M.practice ? '연습 목록으로' : '그만두고 처음으로', { size: 22 })) {
+      paused = false; sfx.click();
+      if (online()) game.online.leave(); else game.go(M.practice ? 'practice' : 'title');
     }
     text(ctx, 'Esc 로 돌아가기', W / 2, 500, { size: 16, weight: 600, align: 'center', color: COL.dim });
   }
@@ -74,8 +80,9 @@ export function matchScenes(game) {
   // Roulette strip
   let rl = null;
   const roulette = {
+    follow() { setTouchLayout({ stick: false, a: false }); playMusic('menu'); },
     enter() {
-      setTouchLayout({ stick: false, a: false }); playMusic('menu');
+      this.follow();
       const target = MINIGAMES.findIndex(m => m.id === M.queue[M.round]);
       const spins = 3 + Math.floor(M.rng.next() * 2);
       const N = MINIGAMES.length, from = M.rng.next() * N;
@@ -85,8 +92,8 @@ export function matchScenes(game) {
     update(dt) {
       const e = (game.t - rl.t0) / 2.6;
       const cell = Math.floor(lerpPos(e) + 0.5);
-      if (cell !== rl.lastCell) { rl.lastCell = cell; if (e < 1) sfx.spin(); }
-      if (e >= 1 && !rl.done) { rl.done = true; rl.doneT = game.t; sfx.coin(); }
+      if (cell !== rl.lastCell) { rl.lastCell = cell; if (e < 1) game.sfx('spin'); }
+      if (e >= 1 && !rl.done) { rl.done = true; rl.doneT = game.t; game.sfx('coin'); }
       if (rl.done && game.t - rl.doneT > (isLast() ? 1.8 : 1.1)) game.go('intro');
     },
     render(ctx) {
@@ -137,20 +144,20 @@ export function matchScenes(game) {
   // Intro: rules + ready
   let it = null;
   const intro = {
+    follow() { paused = false; setTouchLayout({ stick: false, a: true, aLabel: '준비' }); playMusic('menu'); },
     enter() {
-      paused = false;
       M.mg = byId(M.queue[M.round]);
-      setTouchLayout({ stick: false, a: true, aLabel: '준비' });
-      playMusic('menu');
+      this.follow();
       it = { t0: game.t, ready: [false, false, false, false], readyAt: [0, 0, 0, 0].map(() => game.t + (game.auto ? 0.3 : 0.9 + M.rng.next() * 2.2)), startT: -1 };
     },
     update(dt, inp) {
       if (pauseUpdate(inp)) return;
       for (let i = 0; i < 4; i++) {
-        const isHuman = i === game.local && !game.auto;
-        if (!isHuman && !it.ready[i] && game.t > it.readyAt[i]) { it.ready[i] = true; sfx.lock(); }
+        if (it.ready[i]) continue;
+        if (game.players[i].bot) { if (game.t > it.readyAt[i]) { it.ready[i] = true; game.sfx('lock'); } continue; }
+        const ii = game.inputFor(i);
+        if (ii && (ii.aP || (ii.pP && inRect(READY_BTN, ii.px, ii.py)))) { it.ready[i] = true; game.sfx('lock'); }
       }
-      if (!it.ready[game.local] && (inp.aP || (inp.pP && inRect(READY_BTN, inp.px, inp.py)))) { it.ready[game.local] = true; sfx.lock(); }
       if (game.t - it.t0 > 15) it.ready = [true, true, true, true];
       if (it.startT < 0 && it.ready.every(Boolean)) it.startT = game.t;
       if (it.startT > 0 && game.t - it.startT > 0.5) game.go('play');
@@ -183,6 +190,7 @@ export function matchScenes(game) {
         text(ctx, game.players[i].name, x + 100, y + 200, { size: 19, weight: 900, align: 'center', color: game.players[i].color });
         text(ctx, it.ready[i] ? '준비 완료' : '규칙 보는 중', x + 100, y + 222, { size: 15, weight: 800, align: 'center', color: it.ready[i] ? COL.good : COL.dim });
       }
+      if (M.practice && button(ctx, inp, BACK_BTN, '← 다른 미니게임 고르기', { size: 18 })) { sfx.click(); game.go('practice'); return; }
       if (!it.ready[game.local]) {
         button(ctx, inp, READY_BTN, '준비 완료  (Space)', { primary: true, size: 24, color: mg.color });
       } else text(ctx, '다른 플레이어를 기다리는 중...', READY_BTN.x + READY_BTN.w / 2, READY_BTN.y + 38, { size: 20, weight: 700, align: 'center', color: COL.sub });
@@ -190,19 +198,24 @@ export function matchScenes(game) {
     renderOverlay: (ctx, inp) => pauseRender(ctx, inp),
   };
   const READY_BTN = { x: 70, y: 630, w: 640, h: 62 };
+  const BACK_BTN = { x: W - 300, y: 34, w: 260, h: 46 };
+  const HUD_BACK = { x: W - 132, y: 6, w: 124, h: 34 };
 
   // Play
   let pl = null;
   const prevA = [false, false, false, false];
   const play = {
-    enter() {
+    follow() {
       paused = false;
+      setTouchLayout(Object.assign({ stick: false, a: false }, M.mg.touch || {}));
+      playMusic(M.mg.music === 'none' ? null : (M.mg.music || 'game'));
+    },
+    enter() {
       const mg = M.mg;
       M.st = mg.init(game, M.rng);
       pl = { t0: game.t, phase: 'count', endT: 0, lastCount: 4 };
       prevA.fill(false);
-      setTouchLayout(Object.assign({ stick: false, a: false }, mg.touch || {}));
-      playMusic(mg.music === 'none' ? null : (mg.music || 'game'));
+      this.follow();
     },
     update(dt, inp) {
       if (pauseUpdate(inp)) return;
@@ -210,8 +223,8 @@ export function matchScenes(game) {
       const e = game.t - pl.t0;
       if (pl.phase === 'count') {
         const c = Math.ceil(3 - e);
-        if (c !== pl.lastCount && c > 0) { pl.lastCount = c; sfx.tick(); }
-        if (e >= 3) { pl.phase = 'run'; sfx.go(); }
+        if (c !== pl.lastCount && c > 0) { pl.lastCount = c; game.sfx('tick'); }
+        if (e >= 3) { pl.phase = 'run'; game.sfx('go'); }
         mg.preview?.(st, dt, game);
         return;
       }
@@ -219,20 +232,21 @@ export function matchScenes(game) {
         const inputs = [];
         for (let i = 0; i < 4; i++) {
           let raw;
-          const human = i === game.local && !game.auto;
-          if (human) raw = { mx: inp.mx, my: inp.my, a: inp.a, px: inp.px, py: inp.py, pDown: inp.pDown, pP: inp.pP, upP: inp.upP, downP: inp.downP, leftP: inp.leftP, rightP: inp.rightP };
+          const human = !game.players[i].bot;
+          const src = human ? game.inputFor(i) : null;   // local keyboard/mouse, or a remote player's input
+          if (human) raw = src ? { mx: src.mx, my: src.my, a: src.a, px: src.px, py: src.py, pDown: src.pDown, pP: src.pP, upP: src.upP, downP: src.downP, leftP: src.leftP, rightP: src.rightP } : {};
           else raw = mg.bot(st, i, game, M.rng) || {};
           const a = !!raw.a;
           inputs[i] = {
             mx: raw.mx || 0, my: raw.my || 0, a,
-            aP: human ? (inp.aP || (a && !prevA[i])) : (a && !prevA[i]), aR: !a && prevA[i],
+            aP: (human && !!src?.aP) || (a && !prevA[i]), aR: !a && prevA[i],
             px: raw.px ?? -100, py: raw.py ?? -100, pDown: !!raw.pDown, pP: !!raw.pP,
             upP: !!raw.upP, downP: !!raw.downP, leftP: !!raw.leftP, rightP: !!raw.rightP, num: raw.num,
           };
           prevA[i] = a;
         }
         mg.update(st, dt, inputs, game, M.rng);
-        if (mg.done(st)) { pl.phase = 'end'; pl.endT = game.t; sfx.whoosh(); }
+        if (mg.done(st)) { pl.phase = 'end'; pl.endT = game.t; game.sfx('whoosh'); }
       } else if (pl.phase === 'end') {
         mg.update(st, dt, [0, 1, 2, 3].map(() => ({ mx: 0, my: 0, a: false, aP: false, aR: false, px: -100, py: -100 })), game, M.rng, true);
         if (game.t - pl.endT > 1.6) game.go('result');
@@ -251,6 +265,7 @@ export function matchScenes(game) {
         text(ctx, s.toFixed(s < 10 ? 1 : 0), W / 2, 34, { size: 30, weight: 900, align: 'center', color: s < 5 ? COL.bad : COL.text });
       }
       if (mg.hud) mg.hud(ctx, st, game);
+      if (M.practice && button(ctx, inp, HUD_BACK, '← 목록', { size: 15 })) { sfx.click(); game.go('practice'); return; }
       drawHelp(ctx, inp, mg);
       // countdown / end banners
       const e = game.t - pl.t0;
@@ -291,8 +306,9 @@ export function matchScenes(game) {
   // Result of one minigame
   let rs = null;
   const result = {
+    follow() { setTouchLayout({ stick: false, a: canControl(), aLabel: '다음' }); playMusic(null); },
     enter() {
-      setTouchLayout({ stick: false, a: true, aLabel: '다음' });
+      this.follow();
       const sc = M.mg.scores(M.st);
       const place = placesFrom(sc);
       const pts = place.map(p => M.practice ? 0 : POINTS[p] * mult());
@@ -300,8 +316,7 @@ export function matchScenes(game) {
       M.scores = M.scores.map((s, i) => s + pts[i]);
       const worst = Math.max(...place);
       rs = { t0: game.t, place, pts, worst, order: [0, 1, 2, 3].sort((a, b) => place[a] - place[b] || a - b) };
-      if (place[game.local] === 0) sfx.good(); else sfx.bad();
-      playMusic(null);
+      for (let j = 0; j < 4; j++) game.sfx(place[j] === 0 ? 'good' : 'bad', j);
       for (let i = 0; i < 4; i++) {
         if (place[i] === 0) botEmote(i, ['thumb', 'dance', 'lol'], 0.55, 0.6 + M.rng.next());
         else if (place[i] === worst) botEmote(i, ['sorry', 'what', 'lol'], 0.4, 0.8 + M.rng.next());
@@ -337,7 +352,8 @@ export function matchScenes(game) {
         }
         ctx.restore();
       });
-      if (e > 1) button(ctx, inp, NEXT_BTN, M.practice ? '계속 (Space)' : '순위 보기 (Space)', { primary: true, size: 22 });
+      if (e > 1 && canControl()) button(ctx, inp, NEXT_BTN, M.practice ? '계속 (Space)' : '순위 보기 (Space)', { primary: true, size: 22 });
+      else if (e > 1) waitText(ctx);
     },
   };
   const NEXT_BTN = { x: W / 2 - 160, y: 650, w: 320, h: 54 };
@@ -358,7 +374,8 @@ export function matchScenes(game) {
   // Cumulative standings
   let sd = null;
   const standings = {
-    enter() { setTouchLayout({ stick: false, a: true, aLabel: '다음' }); sd = { t0: game.t }; playMusic('menu'); },
+    follow() { setTouchLayout({ stick: false, a: canControl(), aLabel: '다음' }); playMusic('menu'); },
+    enter() { this.follow(); sd = { t0: game.t }; },
     update(dt, inp) {
       const e = game.t - sd.t0;
       if (e > 1 && (inp.aP || (inp.pP && inRect(NEXT_BTN, inp.px, inp.py)) || e > 6 || (game.auto && e > 1.2))) {
@@ -388,19 +405,20 @@ export function matchScenes(game) {
         const gain = M.scores[i] - M.prevScores[i];
         if (gain) text(ctx, '+' + gain, 1110, y + 34, { size: 17, weight: 900, color: COL.good, align: 'right', alpha: clamp(e * 2, 0, 1) });
       });
-      if (e > 1) button(ctx, inp, NEXT_BTN, M.round + 1 >= M.rounds ? '최종 결과 (Space)' : '다음 판 (Space)', { primary: true, size: 22 });
+      if (e > 1 && canControl()) button(ctx, inp, NEXT_BTN, M.round + 1 >= M.rounds ? '최종 결과 (Space)' : '다음 판 (Space)', { primary: true, size: 22 });
+      else if (e > 1) waitText(ctx);
     },
   };
 
   // Final podium
   let pd = null;
   const podium = {
+    follow() { setTouchLayout({ stick: false, a: false }); playMusic('menu'); },
     enter() {
-      setTouchLayout({ stick: false, a: false });
+      this.follow();
       const place = placesFrom(M.scores);
-      pd = { t0: game.t, place, confetti: [] };
-      for (let k = 0; k < 140; k++) pd.confetti.push({ x: Math.random() * W, y: -Math.random() * H, vy: 80 + Math.random() * 140, vx: -40 + Math.random() * 80, r: Math.random() * 6, c: ['#ffcf3a', '#e8473f', '#5ed0d6', '#79c66b', '#f3a3c0', '#4c6fc4'][k % 6], s: 5 + Math.random() * 6 });
-      sfx.fanfare(); playMusic('menu');
+      pd = { t0: game.t, place };
+      game.sfx('fanfare');
       for (let i = 0; i < 4; i++) {
         if (place[i] === 0) botEmote(i, ['dance'], 0.9, 1.2);
         else botEmote(i, ['thumb', 'heart', 'sorry', 'lol'], 0.5, 1.5 + M.rng.next() * 2);
@@ -408,9 +426,8 @@ export function matchScenes(game) {
       if (game.auto) window.__matchDone = (window.__matchDone || 0) + 1;
     },
     update(dt, inp) {
-      for (const c of pd.confetti) { c.y += c.vy * dt; c.x += c.vx * dt; c.r += dt * 4; if (c.y > H + 20) { c.y = -10; c.x = Math.random() * W; } }
       if (inp.aP) { game.go('matchStart', { rounds: M.rounds }); }
-      if (inp.escP) game.go('title');
+      if (inp.escP && !online()) game.go('title');
       if (game.auto && game.t - pd.t0 > 2) game.go('matchStart', { rounds: M.rounds });
     },
     render(ctx, inp) {
@@ -440,17 +457,51 @@ export function matchScenes(game) {
         game.drawPlayer(ctx, i, s.x, top, pd.place[i] === 0 ? 170 : 130, { expr: pd.place[i] === 0 ? 'win' : pd.place[i] === 3 ? 'lose' : 'idle', tag: true });
         text(ctx, game.players[i].name + '  ' + M.scores[i] + '점', s.x, top + 96, { size: 19, weight: 900, align: 'center', color: COL.text });
       });
-      for (const c of pd.confetti) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.c; ctx.fillRect(-c.s / 2, -c.s / 4, c.s, c.s / 2); ctx.restore(); }
-      if (e > 2) {
-        if (button(ctx, inp, { x: W / 2 - 340, y: 650, w: 320, h: 54 }, '다시 하기 (Space)', { primary: true, size: 22 })) game.go('matchStart', { rounds: M.rounds });
-        if (button(ctx, inp, { x: W / 2 + 20, y: 650, w: 320, h: 54 }, '처음으로', { size: 22 })) game.go('title');
+      // confetti computed from time only (nothing to sync online)
+      const CC = ['#ffcf3a', '#e8473f', '#5ed0d6', '#79c66b', '#f3a3c0', '#4c6fc4'];
+      for (let k = 0; k < 140; k++) {
+        const h1 = Math.sin(k * 12.9898) * 43758.5453, r1 = h1 - Math.floor(h1), h2 = Math.sin(k * 78.233) * 12345.678, r2 = h2 - Math.floor(h2);
+        const vy = 80 + r2 * 140, span = H + 40, y = ((r1 * span + e * vy) % span) - 20, x = (r1 * 997 + r2 * 311 + e * (r2 - 0.5) * 80) % W;
+        const sz = 5 + r2 * 6;
+        ctx.save(); ctx.translate((x + W) % W, y); ctx.rotate(e * 4 + k); ctx.fillStyle = CC[k % 6]; ctx.fillRect(-sz / 2, -sz / 4, sz, sz / 2); ctx.restore();
       }
+      if (e > 2 && canControl()) {
+        if (button(ctx, inp, { x: W / 2 - 340, y: 650, w: 320, h: 54 }, '다시 하기 (Space)', { primary: true, size: 22 })) game.go('matchStart', { rounds: M.rounds });
+        if (button(ctx, inp, { x: W / 2 + 20, y: 650, w: 320, h: 54 }, online() ? '대기실로' : '처음으로', { size: 22 })) { if (online()) game.online.toRoom(); else game.go('title'); }
+      } else if (e > 2) waitText(ctx, '방장이 다시 할지 고르는 중...');
       const winnerIdx = order[0];
-      if (e > 1.2) text(ctx, game.players[winnerIdx].charName + ' 우승!', W / 2, 150, { size: 30, weight: 900, align: 'center', color: game.players[winnerIdx].color, stroke: '#1b1824', strokeW: 6 });
+      if (e > 1.2) text(ctx, (online() ? game.players[winnerIdx].name : game.players[winnerIdx].charName) + ' 우승!', W / 2, 150, { size: 30, weight: 900, align: 'center', color: game.players[winnerIdx].color, stroke: '#1b1824', strokeW: 6 });
     },
   };
 
-  return { matchStart, roulette, intro, play, result, standings, podium, practiceEnd };
+  function waitText(ctx, msg = '방장이 넘기거나 잠시 뒤 자동으로 넘어갑니다') {
+    ctx.fillStyle = 'rgba(14,12,19,0.85)'; ctx.fillRect(W / 2 - 300, 654, 600, 46);
+    text(ctx, msg, W / 2, 684, { size: 19, weight: 800, align: 'center', color: COL.sub });
+  }
+
+  // ---------- online sync: the host sends this state, other players draw it ----------
+  const NAMES = ['roulette', 'intro', 'play', 'result', 'standings', 'podium'];
+  const sync = {
+    isMatch: (name) => NAMES.includes(name),
+    build() {
+      const sc = game.sceneName;
+      return {
+        scene: sc,
+        M: { rounds: M.rounds, round: M.round, queue: M.queue, scores: M.scores, prevScores: M.prevScores, practice: false, fixed: null, mgId: M.mg ? M.mg.id : null },
+        S: { rl, it, pl, rs, sd, pd },
+        st: sc === 'play' || sc === 'result' ? M.st : null,
+      };
+    },
+    apply(s) {
+      Object.assign(M, s.M);
+      M.mg = s.M.mgId ? byId(s.M.mgId) : null;
+      if (s.st) M.st = s.st;
+      ({ rl, it, pl, rs, sd, pd } = s.S);
+    },
+    clientUpdate(inp) { if (inp.escP) { paused = !paused; sfx.click(); } },
+  };
+
+  return { matchStart, roulette, intro, play, result, standings, podium, practiceEnd, __sync: sync };
 }
 
 // Big centered word on a dark band; thin outline so letter holes stay open

@@ -1,6 +1,5 @@
 // 인간 대포 — lock the angle, then the power, and launch yourself onto the target. Wind matters. 3 shots.
 import { W, H, COL } from '../config.js';
-import { sfx } from '../audio.js';
 import { shade } from '../characters.js';
 import { text } from '../ui.js';
 
@@ -42,7 +41,7 @@ export default {
       p.pt += dt;
       if (p.phase === 'angle') {
         p.ang = angleAt(p.pt);
-        if (press || p.pt > IDLE + 3) { p.phase = 'power'; p.pt = 0; if (p.i === game.local) sfx.lock(); }
+        if (press || p.pt > IDLE + 3) { p.phase = 'power'; p.pt = 0; game.sfx('lock', p.i); }
       } else if (p.phase === 'power') {
         p.pow = powerAt(p.pt);
         if (press || p.pt > IDLE) {
@@ -50,7 +49,7 @@ export default {
           const a = p.ang * Math.PI / 180;
           p.x = CANX + Math.cos(a) * 44; p.y = GROUND - 30 - Math.sin(a) * 44;
           p.vx = Math.cos(a) * V0 * p.pow; p.vy = -Math.sin(a) * V0 * p.pow; p.rot = 0;
-          if (p.i === game.local) sfx.boom(); else sfx.bump(0.4);
+          game.sfx('boom', p.i); game.sfx('bump', ~p.i, 0.4);
         }
       } else if (p.phase === 'fly') {
         const sub = 4;
@@ -65,7 +64,7 @@ export default {
           const d = Math.abs(p.x - c.tx), pts = pointsFor(d);
           p.total += pts; p.last = { pts, x: p.x }; p.marks.push({ x: p.x, pts, shot: p.shot });
           p.phase = 'land'; p.pt = 0;
-          if (p.i === game.local) { if (pts >= 6) sfx.good(); else if (pts) sfx.coin(); else sfx.land(); }
+          game.sfx(pts >= 6 ? 'good' : pts ? 'coin' : 'land', p.i);
         }
       } else if (p.phase === 'land') {
         if (p.pt > 1.4) {

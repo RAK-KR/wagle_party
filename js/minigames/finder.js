@@ -1,5 +1,4 @@
 // 같은 얼굴 찾기 — find the one tile that matches the target character AND face. First correct click scores.
-import { sfx } from '../audio.js';
 import { ROSTER, drawCharacter } from '../characters.js';
 import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
 
@@ -51,17 +50,17 @@ export default {
       const order = rng.shuffle([0, 1, 2, 3]);
       for (const i of order) {
         const inp = inputs[i];
-        if (i !== game.local || game.auto) { st.cursors[i].x = inp.px; st.cursors[i].y = inp.py; }
+        st.cursors[i].x = inp.px; st.cursors[i].y = inp.py;
         if (ended || !inp.pP || st.lock[i] > 0 || st.winner >= 0) continue;
         for (let k = 0; k < st.tiles.length; k++) {
           const r = tileRect(k);
           if (inp.px < r.x || inp.px > r.x + r.w || inp.py < r.y || inp.py > r.y + r.h) continue;
-          if (k === st.ans) { st.winner = i; st.score[i]++; sfx.good(); }
-          else { st.lock[i] = 1.0; st.wrong.push({ k, i, t: st.t }); if (i === game.local) sfx.bad(); }
+          if (k === st.ans) { st.winner = i; st.score[i]++; game.sfx('good', null); }
+          else { st.lock[i] = 1.0; st.wrong.push({ k, i, t: st.t }); game.sfx('bad', i); }
           break;
         }
       }
-      if (st.winner >= 0 || st.pt > ROUND_LIMIT) { st.phase = 'reveal'; st.pt = 0; if (st.winner < 0) sfx.miss(); }
+      if (st.winner >= 0 || st.pt > ROUND_LIMIT) { st.phase = 'reveal'; st.pt = 0; if (st.winner < 0) game.sfx('miss', null); }
     } else if (st.phase === 'reveal') {
       if (st.pt > 1.5) {
         st.round++;

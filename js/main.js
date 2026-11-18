@@ -2,6 +2,9 @@
 import { W, H, COL, DIFFS } from './config.js';
 import { initInput, readInput, endFrame, setView, drawTouchUI, touchMode } from './input.js';
 import { unlock, toggleMute } from './audio.js';
+import { createOnline, playEvent } from './online.js';
+import { onlineScene, roomScene } from './scenes/lobby.js';
+import { chatOpen, openChat } from './chat.js';
 import { drawCharacter, ROSTER } from './characters.js';
 import { createEmotes } from './emotes.js';
 import { titleScene, selectScene, practiceScene } from './scenes/menu.js';
@@ -20,9 +23,23 @@ const game = {
   auto: params.get('auto') === '1',   // test mode: local player is driven by a bot
   speed: Number(params.get('speed') || 1),
   scene: null, scenes: {},
-  sharedPointerUsed: false,
+  sceneName: '',
+  localIn: null, remoteIn: [null, null, null, null],
+  sfxQ: [],
 };
 game.emotes = createEmotes(game);
+game.online = createOnline(game);
+
+// Sound events from the game logic. Offline: just play. Online host: play for itself and send to the others.
+// who: null = everyone, a seat number = only that player, ~seat = everyone except that player
+game.sfx = (name, who = null, arg, delay = 0) => {
+  const on = game.online;
+  if (on.role === 'client') return;
+  playEvent([name, who, arg, delay], game.local);
+  if (on.role === 'host') game.sfxQ.push([name, who ?? null, arg ?? null, delay || 0]);
+};
+// input of a human player: this device, or what a remote player sent
+game.inputFor = (i) => (i === game.local ? game.localIn : game.remoteIn[i]);
 
 game.setPlayers = (localChar, rngPick) => {
   const others = ROSTER.map(c => c.id).filter(id => id !== localChar);
@@ -37,7 +54,7 @@ game.setPlayers = (localChar, rngPick) => {
 // Draw a player's character; records head anchor for emote bubbles and applies emote poses.
 game.drawPlayer = (c, i, x, y, size, opts = {}) => {
   const p = game.players[i];
-  if (!p) return;
+  if (!p || !p.char) return;
   const m = opts.noEmote ? null : game.emotes.mod(i);
   let expr = opts.expr || 'idle', hop = 0, rot = 0, facing = opts.facing || 1;
   if (m) { if (!opts.lockExpr) expr = m.expr; hop = m.hop || 0; rot = m.rot || 0; if (m.flip) facing *= m.flip; }
@@ -65,13 +82,17 @@ game.drawPlayer = (c, i, x, y, size, opts = {}) => {
 
 game.go = (name, args) => {
   const s = game.scenes[name];
-  game.scene = s; game.anchors = [null, null, null, null];
+  if (game.scene && game.scene !== s) game.scene.exit?.();
+  game.scene = s; game.sceneName = name; game.anchors = [null, null, null, null];
   s.enter?.(args);
 };
 
+const ms = matchScenes(game);
+game.matchSync = ms.__sync; delete ms.__sync;
 Object.assign(game.scenes, {
   title: titleScene(game), select: selectScene(game), practice: practiceScene(game),
-  ...matchScenes(game),
+  online: onlineScene(game), room: roomScene(game),
+  ...ms,
 });
 
 // ---- sizing ----
@@ -98,17 +119,30 @@ function frame(now) {
   last = now;
   try {
     const inp = readInput();
+    game.localIn = inp;
     if (inp.mP) toggleMute();
-    const steps = game.speed > 1 ? Math.round(game.speed) : 1;
+    const on = game.online;
+    if (on.role) on.beginFrame(inp);
     const sceneBefore = game.scene;
-    for (let k = 0; k < steps; k++) {
-      game.t += dt;
-      // extra fast-forward steps must not repeat this frame's presses
-      const sInp = k === 0 ? inp : { ...inp, aP: false, pP: false, escP: false, gP: false, leftP: false, rightP: false, upP: false, downP: false, emoteTouchP: false };
-      const used = game.scene.allowEmote === false ? false : game.emotes.handleLocal(sInp);
-      if (used) sInp.pP = false;
-      game.scene.update(dt, sInp);
+    if (on.role === 'client' && on.following) {
+      // online guest during a match: the host runs the game, we draw its state
+      const used = game.emotes.handleLocal(inp);
+      if (used) inp.pP = false;
+      game.matchSync.clientUpdate(inp);
+      on.clientApply();
+    } else {
+      const steps = game.speed > 1 ? Math.round(game.speed) : 1;
+      for (let k = 0; k < steps; k++) {
+        game.t += dt;
+        // extra fast-forward steps must not repeat this frame's presses
+        const sInp = k === 0 ? inp : { ...inp, aP: false, pP: false, escP: false, gP: false, leftP: false, rightP: false, upP: false, downP: false, emoteTouchP: false };
+        const used = game.scene.allowEmote === false ? false : game.emotes.handleLocal(sInp);
+        if (used) sInp.pP = false;
+        game.scene.update(dt, sInp);
+        if (k === 0 && on.role === 'host') game.remoteIn = [null, null, null, null];  // remote presses count once
+      }
     }
+    if (on.role && on.lobby && game.matchSync.isMatch(game.sceneName) && inp.enterP && !chatOpen()) openChat((t) => on.sendChat(t));
     // a key/click that already changed the scene in update must not also click the new scene's buttons
     if (game.scene !== sceneBefore) { inp.pP = false; inp.aP = false; }
     // draw
@@ -119,6 +153,7 @@ function frame(now) {
     game.anchors = [null, null, null, null];
     game.scene.render(ctx, inp);
     game.emotes.drawBubbles(ctx, game.anchors);
+    on.drawOverlay(ctx);
     game.scene.renderOverlay?.(ctx, inp);
     drawTouchUI(ctx, game.scene.allowEmote !== false);
     game.emotes.drawWheel(ctx);
@@ -127,6 +162,7 @@ function frame(now) {
       text(ctx, '화면을 가로로 돌려 주세요', W / 2, H / 2, { size: 48, weight: 900, align: 'center', base: 'middle' });
     }
     ctx.restore();
+    if (on.role === 'host') on.endFrame();
     endFrame();
   } catch (err) {
     if (!errorShown) { errorShown = err; console.error(err); }

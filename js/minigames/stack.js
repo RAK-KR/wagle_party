@@ -1,5 +1,4 @@
 // 탑 쌓기 — a block slides back and forth; drop it on the tower. Overhang gets cut off. Highest tower wins.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, QW, QH } from './common.js';
 
 const BH = 24, BASEW = 230, LIMIT = 45, BASEY = 292;
@@ -34,14 +33,14 @@ export default {
       if (p.mx < 20 + half) { p.mx = 20 + half; p.dir = 1; }
       if (inputs[p.i].aP || inputs[p.i].pP) {
         const dx = p.mx - top.x;
-        if (Math.abs(dx) < 5) { p.blocks.push({ x: top.x, w: top.w }); p.perfect = 0.5; if (p.i === game.local) sfx.perfect(); }
-        else if (Math.abs(dx) >= top.w) { p.failed = true; p.failT = st.t; p.fall = { x: p.mx, w: top.w, t: 0 }; if (p.i === game.local) sfx.bad(); else sfx.miss(); continue; }
+        if (Math.abs(dx) < 5) { p.blocks.push({ x: top.x, w: top.w }); p.perfect = 0.5; game.sfx('perfect', p.i); }
+        else if (Math.abs(dx) >= top.w) { p.failed = true; p.failT = st.t; p.fall = { x: p.mx, w: top.w, t: 0 }; game.sfx('bad', p.i); game.sfx('miss', ~p.i); continue; }
         else {
           const nw = top.w - Math.abs(dx), nx = top.x + dx / 2;
           const cutX = dx > 0 ? nx + nw / 2 + Math.abs(dx) / 2 : nx - nw / 2 - Math.abs(dx) / 2;
           p.chips.push({ x: cutX, y: 0, w: Math.abs(dx), vy: -60, vx: Math.sign(dx) * 80, t: 0, h });
           p.blocks.push({ x: nx, w: nw });
-          if (p.i === game.local) sfx.land();
+          game.sfx('land', p.i);
         }
         p.speed = Math.min(520, 230 + p.blocks.length * 11);
         p.mx = p.dir > 0 ? 20 + p.blocks[p.blocks.length - 1].w / 2 : QW - 20 - p.blocks[p.blocks.length - 1].w / 2;

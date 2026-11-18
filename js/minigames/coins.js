@@ -1,14 +1,13 @@
-// 코인 줍기 — coins rain down; grab the most. Bombs stun you and scatter your coins. Dash to bump others.
-import { sfx } from '../audio.js';
+// 코인 줍기 — coins rain down; grab the most. Bombs stun you and scatter your coins.
 import { W, H, COL, text, coin, byDiff, clamp, shade } from './common.js';
 
 const AX0 = 80, AY0 = 80, AX1 = 1200, AY1 = 690, LIMIT = 32, SPEED = 290, FALL = 0.9, PICK = 36;
 
 export default {
   id: 'coins', name: '코인 줍기', typeLabel: '캐릭터 조작', color: '#ffcf3a',
-  rule: '하늘에서 떨어지는 코인을 가장 많이 주우세요. 폭탄 그림자는 피하고, 부딪히면 상대 코인을 떨어뜨릴 수 있습니다.',
-  controls: [['이동', 'WASD / 방향키'], ['돌진', 'Space (부딪히면 상대 코인 1개 떨어짐)']],
-  touch: { stick: true, a: true, aLabel: '돌진' },
+  rule: '하늘에서 떨어지는 코인을 가장 많이 주우세요. 빨간 폭탄 그림자에 맞으면 잠깐 기절하고 코인 3개를 떨어뜨립니다.',
+  controls: [['이동', 'WASD / 방향키']],
+  touch: { stick: true, a: false },
 
   init(game, rng) {
     const sp = [[300, 250], [980, 250], [300, 560], [980, 560]];
@@ -32,7 +31,7 @@ export default {
       if (!it.landed && it.t >= (it.scatter ? 0.45 : FALL)) {
         it.landed = true; it.t = 0;
         if (it.type === 'bomb') {
-          it.dead = true; sfx.boom();
+          it.dead = true; game.sfx('boom', null);
           st.fx.push({ kind: 'boom', x: it.x, y: it.y, t: 0 });
           for (const p of st.pl) if (Math.hypot(p.x - it.x, p.y - it.y) < 82 && p.stun <= 0) {
             p.stun = 1.3; const lose = Math.min(3, p.coins); p.coins -= lose;
@@ -47,30 +46,10 @@ export default {
       let mx = inp.mx, my = inp.my; const l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
       if (p.dash <= 0) { const k = Math.min(1, dt * 12); p.vx += (mx * SPEED - p.vx) * k; p.vy += (my * SPEED - p.vy) * k; }
       if (Math.abs(mx) > 0.2) p.facing = mx > 0 ? 1 : -1;
-      if (!ended && p.stun <= 0 && inp.aP && p.cd === 0) {
-        const d = l > 0.1 ? [mx / Math.max(l, 1e-3) * Math.min(1, l), my / Math.max(l, 1e-3) * Math.min(1, l)] : [p.facing, 0];
-        const dl = Math.hypot(d[0], d[1]) || 1;
-        p.vx = d[0] / dl * 720; p.vy = d[1] / dl * 720; p.dash = 0.2; p.cd = 1.2; sfx.boost();
-      }
       p.x = clamp(p.x + p.vx * dt, AX0 + 24, AX1 - 24); p.y = clamp(p.y + p.vy * dt, AY0 + 30, AY1 - 6);
       for (const it of st.items) {
         if (!it.landed || it.dead || it.type === 'bomb' || p.stun > 0) continue;
-        if (Math.hypot(it.x - p.x, it.y - (p.y - 10)) < PICK) { it.dead = true; p.coins += it.val; p.gain = 0.3; if (p.i === game.local) (it.val > 1 ? sfx.good() : sfx.coin()); }
-      }
-    }
-    // bumping
-    for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
-      const A = st.pl[a], B = st.pl[b];
-      const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-      if (d < 50 && d > 0.01) {
-        const nx = dx / d, ny = dy / d, o = (50 - d) / 2;
-        A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o;
-        for (const [X, Y, s] of [[A, B, 1], [B, A, -1]]) {
-          if (X.dash > 0 && Y.hitFlash <= 0) {
-            Y.hitFlash = 0.6; Y.vx = nx * 420 * s; Y.vy = ny * 420 * s; Y.dash = 0.15; sfx.bump(1);
-            if (Y.coins > 0) { Y.coins--; const ang = Math.atan2(ny * s, nx * s) + rng.range(-0.6, 0.6); st.items.push({ type: 'coin', x: clamp(Y.x + Math.cos(ang) * 90, AX0 + 20, AX1 - 20), y: clamp(Y.y + Math.sin(ang) * 90, AY0 + 20, AY1 - 10), t: 0, landed: false, val: 1, scatter: true, fromX: Y.x, fromY: Y.y }); }
-          }
-        }
+        if (Math.hypot(it.x - p.x, it.y - (p.y - 10)) < PICK) { it.dead = true; p.coins += it.val; p.gain = 0.3; game.sfx(it.val > 1 ? 'good' : 'coin', p.i); }
       }
     }
     st.items = st.items.filter(it => !it.dead && !(it.landed && it.t > 9));
@@ -113,11 +92,7 @@ export default {
     let mx = b.tx - p.x, my = b.ty - p.y; const d = Math.hypot(mx, my);
     if (d < 6) return {};
     mx = mx / d * spd; my = my / d * spd;
-    let a = false;
-    if (p.cd === 0 && rng.next() < byDiff(game, [0.004, 0.01, 0.02])) {
-      for (const o of st.pl) if (o !== p && o.coins > 0 && Math.hypot(o.x - p.x, o.y - p.y) < 130) { mx = (o.x - p.x); my = (o.y - p.y); const l = Math.hypot(mx, my) || 1; mx /= l; my /= l; a = true; }
-    }
-    return { mx, my, a };
+    return { mx, my };
   },
 
   render(ctx, st, game) {

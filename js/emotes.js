@@ -48,12 +48,12 @@ export function createEmotes(game) {
   const wheel = { open: false, mode: 'hold', sx: 0, sy: 0, sel: -1, openT: 0 };
   const CX = W / 2, CY = H / 2, R1 = 64, R2 = 160;
 
-  function trigger(i, k) {
-    if (game.t - lastAt[i] < 0.5) return;
+  function trigger(i, k, fromNet = false) {
+    if (!fromNet && game.t - lastAt[i] < 0.5) return;
     lastAt[i] = game.t;
     active[i] = { k, t0: game.t };
-    if (i === game.local) sfx.emote();
-    game.net?.sendEmote?.(i, k);
+    if (i === game.local || fromNet) sfx.emote();
+    if (!fromNet) game.online?.emote(i, k);
   }
   function current(i) {
     const a = active[i];
@@ -122,7 +122,7 @@ export function createEmotes(game) {
 
   function drawWheel(ctx) {
     if (!wheel.open) return;
-    const t = game.t, col = game.players[game.local].color;
+    const t = game.t, col = (game.players[game.local] || { color: '#ffcf3a' }).color;
     const k = Math.min(1, (t - wheel.openT) / 0.12);
     ctx.save();
     ctx.fillStyle = `rgba(10,8,16,${0.45 * k})`; ctx.fillRect(0, 0, W, H);
@@ -152,7 +152,7 @@ export function createEmotes(game) {
   function drawBubbles(ctx, anchors) {
     for (let i = 0; i < 4; i++) {
       const a = current(i), an = anchors[i];
-      if (!a || !an) continue;
+      if (!a || !an || !game.players[i]) continue;
       const e = game.t - a.t0, d = dur(a.k);
       const pop = e < 0.22 ? (function (x) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); })(e / 0.22) : 1;
       const fade = Math.min(1, (d - e) / 0.3);

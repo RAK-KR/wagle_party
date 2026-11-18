@@ -1,5 +1,4 @@
 // 열기구 별 모으기 — hold to heat and rise, let go to sink. Collect stars, dodge birds.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, star, QW, QH } from './common.js';
 
 const LIMIT = 34, BX = 150, TOP = 64, BOT = 268, SCROLL0 = 210, LIFT = 560, GRAV = 300, VMAX = 230;
@@ -22,7 +21,7 @@ export default {
       } else items.push({ id: id++, t, y, type: 'bird', amp: rng.range(8, 26), ph: rng.next() * 6 });
       t += rng.range(0.42, 0.85) - t / LIMIT * 0.15;
     }
-    return { t: 0, items, pl: [0, 1, 2, 3].map(i => ({ i, y: (TOP + BOT) / 2, vy: 0, stars: 0, got: new Set(), hit: 0, heat: false, gain: 0, lost: [], bot: { ty: 160, next: 0 } })) };
+    return { t: 0, items, pl: [0, 1, 2, 3].map(i => ({ i, y: (TOP + BOT) / 2, vy: 0, stars: 0, got: {}, hit: 0, heat: false, gain: 0, lost: [], bot: { ty: 160, next: 0 } })) };
   },
   scroll(t) { return SCROLL0 + t * 2.2; },
   itemX(st, it) { // distance travelled since start
@@ -42,14 +41,14 @@ export default {
       if (p.y < TOP) { p.y = TOP; p.vy = Math.max(0, p.vy); }
       if (p.y > BOT) { p.y = BOT; p.vy = Math.min(0, p.vy); }
       for (const it of st.items) {
-        if (p.got.has(it.id)) continue;
+        if (p.got[it.id]) continue;
         const x = this.itemX(st, it); if (x < BX - 50 || x > BX + 50) continue;
         const y = this.itemY(it, st.t), cy = p.y - 30;
-        if (it.type === 'star' && Math.hypot(x - BX, y - cy) < 38) { p.got.add(it.id); p.stars++; p.gain = 0.3; if (p.i === game.local) sfx.coin(); }
+        if (it.type === 'star' && Math.hypot(x - BX, y - cy) < 38) { p.got[it.id] = 1; p.stars++; p.gain = 0.3; game.sfx('coin', p.i); }
         if (it.type === 'bird' && p.hit <= 0 && Math.abs(x - BX) < 34 && Math.abs(y - cy) < 36) {
-          p.got.add(it.id); p.hit = 1.2; const lose = Math.min(2, p.stars); p.stars -= lose; p.vy = 160;
+          p.got[it.id] = 1; p.hit = 1.2; const lose = Math.min(2, p.stars); p.stars -= lose; p.vy = 160;
           for (let k = 0; k < lose; k++) p.lost.push({ t: 0, x: BX, y: cy, vx: -60 - k * 40, vy: -120 });
-          if (p.i === game.local) sfx.bad(); else sfx.bump(0.4);
+          game.sfx('bad', p.i); game.sfx('bump', ~p.i, 0.4);
         }
       }
       for (const l of p.lost) { l.t += dt; l.vy += 500 * dt; l.x += l.vx * dt; l.y += l.vy * dt; }
@@ -68,14 +67,14 @@ export default {
       b.next = st.t + react;
       let target = null, best = 1e9;
       for (const it of st.items) {
-        if (it.type !== 'star' || p.got.has(it.id)) continue;
+        if (it.type !== 'star' || p.got[it.id]) continue;
         const x = this.itemX(st, it); if (x < BX - 20 || x > BX + 420) continue;
         if (x < best) { best = x; target = it; }
       }
       b.ty = target ? this.itemY(target, st.t) + 30 + (rng.next() - 0.5) * err * 2 : (TOP + BOT) / 2;
       // dodge birds about to arrive
       for (const it of st.items) {
-        if (it.type !== 'bird' || p.got.has(it.id)) continue;
+        if (it.type !== 'bird' || p.got[it.id]) continue;
         const x = this.itemX(st, it); if (x < BX - 30 || x > BX + 170) continue;
         const by = this.itemY(it, st.t) + 30;
         if (Math.abs(by - b.ty) < 60 && rng.next() < byDiff(game, [0.6, 0.85, 0.97])) b.ty = by < (TOP + BOT) / 2 + 20 ? by + 75 : by - 75;
@@ -103,7 +102,7 @@ export default {
         for (let k = 0; k < 5; k++) { const x = ((k * 170 - travel * 0.4) % 850 + 850) % 850 - 100, y = 70 + (k * 53) % 160; ctx.beginPath(); ctx.ellipse(x, y, 42, 14, 0, 0, Math.PI * 2); ctx.ellipse(x + 22, y - 8, 26, 13, 0, 0, Math.PI * 2); ctx.fill(); }
         // items
         for (const it of st.items) {
-          if (p.got.has(it.id)) continue;
+          if (p.got[it.id]) continue;
           const x = this.itemX(st, it); if (x < -40 || x > QW + 40) continue;
           const y = this.itemY(it, st.t);
           if (it.type === 'star') star(ctx, x, y, 15 + Math.sin(st.t * 6 + it.id) * 1.5);

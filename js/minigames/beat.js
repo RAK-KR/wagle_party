@@ -1,5 +1,4 @@
 // 박자 맞추기 — drum notes scroll in; hit them on the line. Everyone plays the same chart. (drum pattern only, no melody)
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
 
 const BPM = 120, STEP = 60 / BPM / 2, LEAD = 2.4, HITX = 250, SPD = 430, ROWY = [140, 290, 440, 590];
@@ -32,7 +31,7 @@ export default {
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt;
     const beat = Math.floor((st.t - LEAD) / (STEP * 2));
-    if (beat !== st.lastBeat && st.t < st.end - 1 && st.t > LEAD - 2 * STEP * 2) { st.lastBeat = beat; sfx.hat(); }
+    if (beat !== st.lastBeat && st.t < st.end - 1 && st.t > LEAD - 2 * STEP * 2) { st.lastBeat = beat; game.sfx('hat', null); }
     for (const p of st.pl) {
       p.bounce = Math.max(0, p.bounce - dt);
       for (const f of p.fx) f.t += dt; p.fx = p.fx.filter(f => f.t < 0.5);
@@ -47,8 +46,8 @@ export default {
         p.score += j === 'perfect' ? 3 : j === 'good' ? 2 : 1;
         p.bounce = 0.15;
         p.fx.push({ txt: j === 'perfect' ? '완벽!' : j === 'good' ? '좋아' : '아슬', col: j === 'perfect' ? COL.accent : j === 'good' ? COL.good : COL.sub, t: 0 });
-        if (p.i === game.local) { st.notes[best].kind === 'kick' ? sfx.kick() : sfx.snare(); }
-      } else { p.combo = 0; p.fx.push({ txt: '헛침', col: COL.bad, t: 0 }); if (p.i === game.local) sfx.miss(); }
+        game.sfx(st.notes[best].kind === 'kick' ? 'kick' : 'snare', p.i);
+      } else { p.combo = 0; p.fx.push({ txt: '헛침', col: COL.bad, t: 0 }); game.sfx('miss', p.i); }
     }
   },
   done(st) { return st.t >= st.end; },

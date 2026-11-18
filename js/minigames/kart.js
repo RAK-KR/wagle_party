@@ -1,5 +1,4 @@
 // 미니 카트 — 3 laps around a small track. Stay on the road; grass slows you down.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
 
 const LAPS = 3, TW = 108, MAXV = 340, GRASSV = 130, LIMIT = 80, N = 520;
@@ -38,6 +37,10 @@ function nearest(x, y, guess) {
     const i = (guess + k + N) % N, d = (TRACK[i][0] - x) ** 2 + (TRACK[i][1] - y) ** 2;
     if (d < bd) { bd = d; best = i; }
   }
+  // lost the road (e.g. came back onto it somewhere else after the grass): search the whole track
+  if (bd > (TW * 0.75) ** 2) {
+    for (let i = 0; i < N; i++) { const d = (TRACK[i][0] - x) ** 2 + (TRACK[i][1] - y) ** 2; if (d < bd) { bd = d; best = i; } }
+  }
   return { i: best, d: Math.sqrt(bd) };
 }
 
@@ -64,12 +67,12 @@ export default {
       const nr = nearest(p.x, p.y, p.idx);
       // lap counting with a halfway checkpoint
       if (nr.i > N * 0.45 && nr.i < N * 0.55) p.half = true;
-      if (p.idx > N * 0.85 && nr.i < N * 0.15 && p.half) { p.lap++; p.half = false; if (p.i === game.local && p.lap < LAPS) sfx.coin(); }
+      if (p.idx > N * 0.85 && nr.i < N * 0.15 && p.half) { p.lap++; p.half = false; if (p.lap < LAPS) game.sfx('coin', p.i); }
       if (p.idx < N * 0.15 && nr.i > N * 0.85 && p.lap > 0 && !p.half) p.lap--; // backwards over the line
       p.idx = nr.i;
-      p.off = nr.d > TW / 2;
+      p.off = nr.d > TW / 2 + 12;   // the red/white curb still counts as road
       p.progress = Math.max(0, (p.lap + (p.lap === 0 && p.idx > N * 0.9 ? 0 : p.idx / N)) / LAPS);
-      if (p.lap >= LAPS && p.finishT == null) { p.finishT = st.t; st.finished++; p.place = st.finished; sfx.fanfare && (p.i === game.local ? sfx.good() : null); }
+      if (p.lap >= LAPS && p.finishT == null) { p.finishT = st.t; st.finished++; p.place = st.finished; game.sfx('good', p.i); }
       const top = p.finishT != null ? MAXV * 0.4 : (p.off ? GRASSV : MAXV) * (inp.a ? 0.55 : 1);
       p.v += (top - p.v) * Math.min(1, dt * (top < p.v ? 3 : 1.4));
       const turn = (inp.a ? 3.9 : 2.9) * clamp(p.v / 180, 0.35, 1.1);
@@ -78,7 +81,7 @@ export default {
     }
     for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
       const A = st.pl[a], B = st.pl[b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
-      if (d < 34 && d > 0.01) { const o = (34 - d) / 2, nx = dx / d, ny = dy / d; A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o; A.v *= 0.92; B.v *= 0.92; if (A.bump <= 0 || B.bump <= 0) sfx.bump(0.5); A.bump = B.bump = 0.3; }
+      if (d < 34 && d > 0.01) { const o = (34 - d) / 2, nx = dx / d, ny = dy / d; A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o; if (A.bump <= 0 && B.bump <= 0) { A.v *= 0.9; B.v *= 0.9; game.sfx('bump', null, 0.5); } A.bump = B.bump = 0.3; }
     }
   },
   done(st) { return st.pl.every(p => p.finishT != null) || st.t > LIMIT || (st.finished >= 1 && st.t > st.pl.filter(p => p.finishT != null).reduce((m, p) => Math.min(m, p.finishT), 1e9) + 12); },

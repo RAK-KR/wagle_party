@@ -1,5 +1,4 @@
 // 숫자 순서대로 — click 1 to 20 in order as fast as you can. Everyone gets the same board.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
 
 const COUNT = 20, R = 34, BX0 = 40, BY0 = 70, BX1 = 880, BY1 = 700, LIMIT = 45;
@@ -36,7 +35,7 @@ export default {
         const hit = st.nums.find(o => o.n >= p.next && Math.hypot(o.x - inp.px, o.y - inp.py) < R + 4);
         if (hit) {
           if (hit.n === p.next) this.advance(st, p, game);
-          else { p.pen = 0.6; p.shake = 0.3; if (p.i === game.local) sfx.bad(); }
+          else { p.pen = 0.6; p.shake = 0.3; game.sfx('bad', p.i); }
         }
       }
     }
@@ -45,8 +44,8 @@ export default {
     const o = st.nums[p.next - 1];
     p.pop.push({ x: o.x, y: o.y, t: 0 });
     p.next++; p.progress = (p.next - 1) / COUNT;
-    if (p.i === game.local) sfx.pop();
-    if (p.next > COUNT) { p.finishT = st.t; if (p.i === game.local) sfx.good(); }
+    game.sfx('pop', p.i);
+    if (p.next > COUNT) { p.finishT = st.t; game.sfx('good', p.i); }
   },
   done(st) { return st.pl.every(p => p.finishT != null) || st.t > LIMIT; },
   timeLeft(st) { return LIMIT - st.t; },

@@ -1,6 +1,5 @@
 // 풍선 팡팡 — click rising balloons before others do. Gold is worth more, bombs take points.
 import { W, H, COL } from '../config.js';
-import { sfx } from '../audio.js';
 import { shade } from '../characters.js';
 import { text } from '../ui.js';
 
@@ -42,8 +41,7 @@ export default {
     const order = rng.shuffle([0, 1, 2, 3]);
     for (const i of order) {
       const inp = inputs[i];
-      if (i === game.local) st.localPtr = { x: inp.px, y: inp.py };
-      else { st.cursors[i].x = inp.px; st.cursors[i].y = inp.py; }
+      st.cursors[i].x = inp.px; st.cursors[i].y = inp.py;
       if (ended || !inp.pP || st.t >= LIMIT) continue;
       let hit = null, hd = 1e9;
       for (const b of st.balloons) {
@@ -56,7 +54,7 @@ export default {
       st.score[i] += pts;
       st.react[i] = 0.6; st.reactK[i] = pts > 0 ? 'win' : 'lose';
       st.fx.push({ x: hit.x, y: hit.y, t: 0, pts, i, type: hit.type, col: hit.col });
-      if (hit.type === 'bomb') sfx.bomb(); else if (hit.type === 'gold') { sfx.pop(); sfx.coin(); } else sfx.pop();
+      if (hit.type === 'bomb') game.sfx('bomb'); else if (hit.type === 'gold') { game.sfx('pop'); game.sfx('coin'); } else game.sfx('pop');
     }
     for (const f of st.fx) f.t += dt;
     st.fx = st.fx.filter(f => f.t < 0.9);
@@ -136,7 +134,8 @@ export default {
     }
     // cursors (bots + local marker)
     for (let i = 0; i < 4; i++) {
-      const c = i === game.local ? st.localPtr : st.cursors[i];
+      if (i === game.local && !game.auto) continue; // your own pointer is the real mouse cursor
+      const c = st.cursors[i];
       if (c.x < 0) continue;
       drawCursor(ctx, c.x, c.y, game.players[i].color, i === game.local ? '나' : game.players[i].name);
     }

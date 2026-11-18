@@ -1,6 +1,5 @@
 // 범퍼카 링 아웃 — bump others off a shrinking round arena.
 import { W, H } from '../config.js';
-import { sfx } from '../audio.js';
 import { shade } from '../characters.js';
 
 const CX = W / 2, CY = 410, YS = 0.6;   // arena center, vertical squash
@@ -37,13 +36,13 @@ export default {
         p.ang += da * Math.min(1, dt * 9);
       }
       if (!ended && inp.aP && p.cd === 0) {
-        p.vx += Math.cos(p.ang) * BOOST; p.vy += Math.sin(p.ang) * BOOST; p.cd = BOOST_CD; p.boostT = 0.35; sfx.boost();
+        p.vx += Math.cos(p.ang) * BOOST; p.vy += Math.sin(p.ang) * BOOST; p.cd = BOOST_CD; p.boostT = 0.35; game.sfx('boost', null);
       }
       const sp = Math.hypot(p.vx, p.vy), cap = p.boostT > 0 ? MAXV * 2.2 : MAXV;
       if (sp > cap) { p.vx *= cap / sp; p.vy *= cap / sp; }
       p.vx *= Math.exp(-DRAG * dt); p.vy *= Math.exp(-DRAG * dt);
       p.x += p.vx * dt; p.y += p.vy * dt;
-      if (Math.hypot(p.x, p.y) > st.R + CR * 0.35) { p.alive = false; p.deathT = st.t; sfx.fall(); }
+      if (Math.hypot(p.x, p.y) > st.R + CR * 0.35) { p.alive = false; p.deathT = st.t; game.sfx('fall', null); }
     }
     // collisions
     const ps = st.players;
@@ -63,7 +62,7 @@ export default {
           A.hitT = B.hitT = 0.3;
           const mxp = (A.x + B.x) / 2, myp = (A.y + B.y) / 2;
           for (let k = 0; k < 10; k++) { const an = rng.next() * Math.PI * 2, v = 80 + rng.next() * 220; st.sparks.push({ x: mxp, y: myp, vx: Math.cos(an) * v, vy: Math.sin(an) * v, life: 0.4 }); }
-          sfx.bump(Math.min(1.4, rel / 250));
+          game.sfx('bump', null, Math.min(1.4, rel / 250));
         }
       }
     }

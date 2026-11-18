@@ -1,5 +1,4 @@
 // 컬링 — take turns sliding stones toward the target. Knock others away. 2 stones each, closest stones score.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
 
 const IX0 = 40, IX1 = 1240, IY0 = 150, IY1 = 620, HX = 150, HY = (IY0 + IY1) / 2, TX = 1030, TY = HY;
@@ -10,12 +9,14 @@ const ptsFor = (d) => d <= RINGS[0] ? 3 : d <= RINGS[1] ? 2 : d <= RINGS[2] + SR
 
 export default {
   id: 'curling', name: '컬링', typeLabel: '물리', color: '#5ed0d6',
-  rule: '차례대로 돌을 밀어 과녁 가운데에 가깝게 멈추세요. 남의 돌을 쳐서 밀어낼 수도 있습니다. 한 사람당 2번.',
+  rule: '차례대로 돌을 밀어 과녁 가운데에 가깝게 멈추세요. 남의 돌을 쳐낼 수 있습니다. 2번째 바퀴는 순서가 거꾸로라 먼저 던진 사람이 마지막에 던집니다.',
   controls: [['방향 정하기', 'Space (흔들리는 방향에서 멈춤)'], ['힘 정하고 밀기', 'Space 한 번 더']],
   touch: { stick: false, a: true, aLabel: '정하기' },
 
   init(game, rng) {
-    const order = []; for (let s = 0; s < SHOTS; s++) for (let i = 0; i < 4; i++) order.push(i);
+    // 1st throw order is random, 2nd round is reversed: whoever throws first also gets the very last stone
+    const first = rng.shuffle([0, 1, 2, 3]);
+    const order = [...first, ...first.slice().reverse()];
     return { t: 0, order, turn: 0, phase: 'aim', pt: 0, ang: 0, pow: 0.6, stones: [], plan: null, end: false, endT: 0, flash: [] };
   },
   update(st, dt, inputs, game, rng, ended) {
@@ -24,24 +25,24 @@ export default {
     if (st.end) return;
     const who = st.order[st.turn], inp = inputs[who];
     const press = !ended && (inp.aP || inp.pP);
-    if (st.phase === 'aim') { st.ang = angleAt(st.pt); if (press || st.pt > IDLE) { st.phase = 'power'; st.pt = 0; if (who === game.local) sfx.lock(); } }
+    if (st.phase === 'aim') { st.ang = angleAt(st.pt); if (press || st.pt > IDLE) { st.phase = 'power'; st.pt = 0; game.sfx('lock', who); } }
     else if (st.phase === 'power') {
       st.pow = powerAt(st.pt);
       if (press || st.pt > IDLE) {
         st.stones.push({ owner: who, x: HX + 30, y: HY, vx: Math.cos(st.ang) * V0 * st.pow, vy: Math.sin(st.ang) * V0 * st.pow, out: false });
-        st.phase = 'slide'; st.pt = 0; sfx.slide();
+        st.phase = 'slide'; st.pt = 0; game.sfx('slide', null);
       }
     } else if (st.phase === 'slide') {
-      this.physics(st, dt);
+      this.physics(st, dt, game);
       if (st.stones.every(s => s.out || Math.hypot(s.vx, s.vy) < 3)) {
         st.stones.forEach(s => { s.vx = s.vy = 0; });
         st.turn++; st.pt = 0; st.plan = null;
-        if (st.turn >= st.order.length) { st.end = true; st.endT = st.t; sfx.fanfare(); }
+        if (st.turn >= st.order.length) { st.end = true; st.endT = st.t; game.sfx('fanfare', null); }
         else st.phase = 'aim';
       }
     }
   },
-  physics(st, dt) {
+  physics(st, dt, game) {
     const sub = 4, h = dt / sub;
     for (let k = 0; k < sub; k++) {
       for (const s of st.stones) {
@@ -58,7 +59,7 @@ export default {
           const nx = dx / d, ny = dy / d, o = (SR * 2 - d) / 2;
           A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o;
           const rel = (A.vx - B.vx) * nx + (A.vy - B.vy) * ny;
-          if (rel > 0) { const j = rel * 0.95; A.vx -= nx * j; A.vy -= ny * j; B.vx += nx * j; B.vy += ny * j; sfx.bump(Math.min(1, rel / 300)); st.flash.push({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2, t: 0 }); }
+          if (rel > 0) { const j = rel * 0.95; A.vx -= nx * j; A.vy -= ny * j; B.vx += nx * j; B.vy += ny * j; game.sfx('bump', null, Math.min(1, rel / 300)); st.flash.push({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2, t: 0 }); }
         }
       }
     }

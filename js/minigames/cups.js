@@ -1,5 +1,4 @@
 // 컵 섞기 — a star hides under one cup; the cups shuffle. Pick the right cup. 5 rounds, getting faster.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, star } from './common.js';
 
 const ROUNDS = 5, TABLE_Y = 470, PICK = 7;
@@ -44,7 +43,7 @@ export default {
         const [a, b] = st.swaps[st.si];
         const ca = st.slot.indexOf(a), cb = st.slot.indexOf(b);
         st.slot[ca] = b; st.slot[cb] = a;
-        st.si++; st.pt = 0; sfx.slide();
+        st.si++; st.pt = 0; game.sfx('slide', null);
         if (st.si >= st.swaps.length) { st.phase = 'pick'; st.pt = 0; }
       }
     } else if (st.phase === 'pick') {
@@ -55,12 +54,12 @@ export default {
         if (inp.leftP) st.sel[i] = (st.sel[i] + st.n - 1) % st.n;
         if (inp.rightP) st.sel[i] = (st.sel[i] + 1) % st.n;
         let lock = inp.aP;
-        if (i === game.local && inp.pP) {
+        if (inp.pP) {
           for (let s = 0; s < st.n; s++) if (Math.abs(inp.px - cupX(st.n, s)) < 80 && inp.py > TABLE_Y - 200 && inp.py < TABLE_Y + 30) { if (st.sel[i] === s) lock = true; st.sel[i] = s; }
           if (inp.px > W / 2 - 120 && inp.px < W / 2 + 120 && inp.py > 600 && inp.py < 656) lock = true;
         }
-        if ((inp.leftP || inp.rightP) && i === game.local) sfx.hover();
-        if (lock) { st.locked[i] = true; if (i === game.local) sfx.lock(); }
+        if (inp.leftP || inp.rightP) game.sfx('hover', i);
+        if (lock) { st.locked[i] = true; game.sfx('lock', i); }
       }
       if (st.locked.every(Boolean) || st.pt > PICK) {
         st.locked = [true, true, true, true];
@@ -69,7 +68,7 @@ export default {
         ok.forEach((v, i) => { if (v) st.score[i]++; });
         st.last = { ans, ok, sel: st.sel.slice() };
         st.phase = 'reveal'; st.pt = 0;
-        setTimeout(() => (ok[game.local] ? sfx.good() : sfx.bad()), 300);
+        for (let j = 0; j < 4; j++) game.sfx(ok[j] ? 'good' : 'bad', j, undefined, 0.3);
       }
     } else if (st.phase === 'reveal' && st.pt > 2.2) {
       st.round++;

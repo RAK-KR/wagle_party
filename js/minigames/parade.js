@@ -1,6 +1,5 @@
 // 몇 번 지나갔지? — count how many times one character ran past in the parade. 3 questions.
 import { W, H, COL } from '../config.js';
-import { sfx } from '../audio.js';
 import { ROSTER, drawCharacter, shade } from '../characters.js';
 import { text, inRect } from '../ui.js';
 
@@ -16,12 +15,12 @@ function btns(i) {
 
 export default {
   id: 'parade', name: '몇 번 지나갔지?', typeLabel: '기억 / 관찰', color: '#b59cff',
-  rule: '캐릭터들이 줄지어 뛰어갑니다. 문제로 나온 캐릭터가 몇 번 지나갔는지 세어서 맞히세요.',
+  rule: '시작 전에 셀 캐릭터를 알려 줍니다. 그 캐릭터가 몇 번 지나가는지 세어서 맞히세요. 3문제입니다.',
   controls: [['숫자 바꾸기', '↑ ↓ 방향키 / 버튼 클릭'], ['결정', 'Space / 결정 버튼']],
   touch: { stick: false, a: false },
 
   init(game, rng) {
-    const st = { t: 0, q: 0, phase: 'parade', pt: 0, runners: [], target: null, count: 0, vals: [5, 5, 5, 5], locked: [false, false, false, false], pts: [0, 0, 0, 0], err: [0, 0, 0, 0], botPlan: [], last: null, flash: [0, 0, 0, 0] };
+    const st = { t: 0, q: 0, phase: 'show', pt: 0, runners: [], target: null, count: 0, vals: [5, 5, 5, 5], locked: [false, false, false, false], pts: [0, 0, 0, 0], err: [0, 0, 0, 0], botPlan: [], last: null, flash: [0, 0, 0, 0] };
     this.makeParade(st, rng);
     return st;
   },
@@ -29,19 +28,19 @@ export default {
     const ids = ROSTER.map(r => r.id);
     const target = rng.pick(ids);
     const q = st.q;
-    const n = [rng.int(4, 6), rng.int(5, 8), rng.int(7, 10)][q];
-    const others = Math.round(n * (1.3 + q * 0.35));
+    const n = [rng.int(3, 5), rng.int(4, 6), rng.int(5, 7)][q];
+    const others = Math.round(n * (0.9 + q * 0.25));
     const list = [];
     for (let k = 0; k < n; k++) list.push(target);
     const rest = ids.filter(id => id !== target);
     for (let k = 0; k < others; k++) list.push(rng.pick(rest));
     const order = rng.shuffle(list);
-    const span = 6.5 + q * 0.8;
+    const span = 6.5 + q * 0.6;
     let tt = 0;
     st.runners = order.map((id, k) => {
-      tt += (span / order.length) * (0.35 + rng.next() * 1.3) * (rng.next() < 0.2 + q * 0.1 ? 0.25 : 1);
-      const dir = q === 2 && rng.next() < 0.35 ? -1 : 1;
-      return { id, t0: tt, speed: 300 + rng.next() * 170 + q * 60, dir, lane: rng.int(0, 2), ph: rng.next() * 6, size: 66 + rng.next() * 12 };
+      // at least 0.3s between runners so two never arrive on top of each other
+      tt += Math.max(0.3, (span / order.length) * (0.55 + rng.next() * 0.9) * (rng.next() < 0.08 + q * 0.06 ? 0.45 : 1));
+      return { id, t0: tt, speed: 250 + rng.next() * 90 + q * 30, dir: 1, lane: rng.int(0, 2), ph: rng.next() * 6, size: 70 + rng.next() * 10 };
     });
     st.target = target; st.count = n;
     st.paradeLen = Math.max(...st.runners.map(r => r.t0 + (W + 200) / r.speed)) + 0.4;
@@ -49,10 +48,11 @@ export default {
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt; st.pt += dt;
     for (let i = 0; i < 4; i++) st.flash[i] = Math.max(0, st.flash[i] - dt);
+    if (st.phase === 'show') { if (st.pt >= 2.4) { st.phase = 'parade'; st.pt = 0; game.sfx('go', null); } return; }
     if (st.phase === 'parade') {
       if (st.pt >= st.paradeLen) {
-        st.phase = 'ask'; st.pt = 0; st.vals = [5, 5, 5, 5]; st.locked = [false, false, false, false]; sfx.go();
-        const sd = [1.5, 0.85, 0.42][Math.round(game.diff.k * 3) - 1] ?? 0.85;
+        st.phase = 'ask'; st.pt = 0; st.vals = [5, 5, 5, 5]; st.locked = [false, false, false, false]; game.sfx('go', null);
+        const sd = [1.0, 0.6, 0.3][Math.round(game.diff.k * 3) - 1] ?? 0.6;
         st.botPlan = [0, 1, 2, 3].map(() => ({ v: Math.max(0, st.count + Math.round(rng.gauss() * sd)), at: 1.6 + rng.next() * 4 }));
       }
     } else if (st.phase === 'ask') {
@@ -64,29 +64,29 @@ export default {
         if (inp.upP || inp.rightP) d = 1;
         if (inp.downP || inp.leftP) d = -1;
         let lock = inp.aP;
-        if (i === game.local && inp.pP) {
+        if (inp.pP) {
           const b = btns(i);
           if (inRect(b.up, inp.px, inp.py)) d = 1;
           if (inRect(b.down, inp.px, inp.py)) d = -1;
           if (inRect(b.ok, inp.px, inp.py)) lock = true;
         }
-        if (d) { st.vals[i] = Math.max(0, Math.min(20, st.vals[i] + d)); if (i === game.local) sfx.hover(); }
-        if (lock) { st.locked[i] = true; st.flash[i] = 0.3; sfx.lock(); }
+        if (d) { st.vals[i] = Math.max(0, Math.min(20, st.vals[i] + d)); game.sfx('hover', i); }
+        if (lock) { st.locked[i] = true; st.flash[i] = 0.3; game.sfx('lock', null); }
       }
       if (st.locked.every(Boolean) || st.pt >= ASK) {
         st.locked = [true, true, true, true];
-        st.phase = 'reveal'; st.pt = 0; sfx.whoosh();
+        st.phase = 'reveal'; st.pt = 0; game.sfx('whoosh', null);
         const e = st.vals.map(v => Math.abs(v - st.count));
         const gain = e.map(x => x === 0 ? 3 : x === 1 ? 1 : 0);
         for (let i = 0; i < 4; i++) { st.pts[i] += gain[i]; st.err[i] += e[i]; }
         st.last = { e, gain, count: st.count, vals: st.vals.slice(), target: st.target };
-        setTimeout(() => (gain[game.local] ? sfx.good() : sfx.bad()), 500);
+        for (let j = 0; j < 4; j++) game.sfx(gain[j] ? 'good' : 'bad', j, undefined, 0.5);
       }
     } else if (st.phase === 'reveal') {
       if (st.pt >= REVEAL) {
         st.q++;
         if (st.q >= QN) st.phase = 'end';
-        else { st.phase = 'parade'; st.pt = 0; this.makeParade(st, rng); }
+        else { st.phase = 'show'; st.pt = 0; this.makeParade(st, rng); }
       }
     }
   },
@@ -139,7 +139,17 @@ export default {
         const hop = Math.abs(Math.sin(e * 9 + r.ph)) * 16;
         drawCharacter(ctx, r.id, x, LANES[r.lane] + 20 - hop, r.size * (0.86 + r.lane * 0.09), { t: st.t + r.ph, facing: r.dir, noShadow: hop > 4 });
       }
-      text(ctx, '잘 세어 보세요!', W / 2, 180, { size: 30, weight: 900, align: 'center', color: '#5a3a2a', alpha: st.pt < 2 ? 1 : 0.35 });
+      const tc = ROSTER.find(r => r.id === st.target);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(W / 2 - 170, 130, 340, 70);
+      drawCharacter(ctx, tc.id, W / 2 - 120, 194, 58, { t: st.t });
+      text(ctx, tc.name + josa(tc.name) + ' 세는 중', W / 2 - 80, 175, { size: 26, title: true, color: shade(tc.color, -0.35) });
+    } else if (st.phase === 'show') {
+      const tc = ROSTER.find(r => r.id === st.target);
+      ctx.fillStyle = 'rgba(27,24,36,0.85)'; ctx.fillRect(W / 2 - 360, 150, 720, 290);
+      drawCharacter(ctx, tc.id, W / 2 - 240, 410, 170, { t: st.t, expr: 'win' });
+      text(ctx, '이번에 셀 캐릭터', W / 2 - 100, 220, { size: 24, weight: 900, color: COL.sub });
+      text(ctx, tc.name, W / 2 - 100, 290, { size: 62, title: true, color: tc.color });
+      text(ctx, '몇 번 지나가는지 세어 보세요', W / 2 - 100, 345, { size: 24, weight: 800 });
     } else {
       const ch = ROSTER.find(r => r.id === (st.phase === 'reveal' && st.last ? st.last.target : st.target));
       ctx.fillStyle = 'rgba(27,24,36,0.85)'; ctx.fillRect(W / 2 - 360, 150, 720, 290);
@@ -190,7 +200,7 @@ export default {
         }
         ctx.fillStyle = COL.accent; ctx.fillRect(b.ok.x, b.ok.y, b.ok.w, b.ok.h);
         text(ctx, '결정', b.ok.x + b.ok.w / 2, b.ok.y + b.ok.h / 2 + 2, { size: 22, weight: 900, align: 'center', base: 'middle', color: '#1b1824' });
-      } else if (st.phase === 'parade') {
+      } else if (st.phase === 'parade' || st.phase === 'show') {
         text(ctx, '세는 중', r.x + 158, r.y + 120, { size: 22, weight: 800, align: 'center', color: COL.dim });
       }
     }

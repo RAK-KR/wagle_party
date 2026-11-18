@@ -1,5 +1,4 @@
 // 순서 기억 — watch the pads light up, then repeat the order. One mistake and you are out. The sequence grows every round.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
 
 const CX = W / 2, CY = 392, PS = 128, MAXR = 14;
@@ -28,7 +27,7 @@ export default {
       if (st.pt > 0.6 && k < st.len) {
         const inStep = (st.pt - 0.6) - k * per;
         const f = inStep < per * 0.72 ? st.seq[k] : -1;
-        if (f >= 0 && st.flash !== k) { st.flash = k; sfx.pad(st.seq[k]); }
+        if (f >= 0 && st.flash !== k) { st.flash = k; game.sfx('pad', null, st.seq[k]); }
         st.lit = f;
       } else st.lit = -1;
       if (st.pt > 0.6 + per * st.len + 0.2) {
@@ -44,11 +43,11 @@ export default {
         const inp = inputs[p.i];
         let pad = inp.num ?? -1;
         if (inp.upP) pad = 0; if (inp.rightP) pad = 1; if (inp.downP) pad = 2; if (inp.leftP) pad = 3;
-        if (p.i === game.local && inp.pP) for (let k = 0; k < 4; k++) { const r = padRect(k); if (inp.px >= r.x && inp.px <= r.x + r.w && inp.py >= r.y && inp.py <= r.y + r.h) pad = k; }
+        if (inp.pP) for (let k = 0; k < 4; k++) { const r = padRect(k); if (inp.px >= r.x && inp.px <= r.x + r.w && inp.py >= r.y && inp.py <= r.y + r.h) pad = k; }
         if (pad < 0) continue;
         p.lastPad = pad; p.padT = st.t;
-        if (pad === st.seq[p.prog]) { p.prog++; if (p.i === game.local) sfx.pad(pad); if (p.prog >= st.len) { p.done = true; if (p.i === game.local) sfx.good(); } }
-        else { p.alive = false; p.outRound = st.round; if (p.i === game.local) sfx.bad(); else sfx.miss(); }
+        if (pad === st.seq[p.prog]) { p.prog++; game.sfx('pad', p.i, pad); if (p.prog >= st.len) { p.done = true; game.sfx('good', p.i); } }
+        else { p.alive = false; p.outRound = st.round; game.sfx('bad', p.i); game.sfx('miss', ~p.i); }
       }
       const waiting = st.pl.filter(p => p.alive && !p.done).length;
       if (waiting === 0 || st.pt > limit) {

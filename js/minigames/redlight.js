@@ -1,5 +1,4 @@
 // 술래 몰래 — run while the watcher chants with their back turned; freeze before they look. Moving while watched sends you back.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
 
 const LANES = [318, 412, 506, 600], START = 110, GOAL = 1040, RUN = 112, LIMIT = 55, TURN = 0.45, GRACE = 0.1;
@@ -27,7 +26,7 @@ export default {
   },
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt; st.pt += dt;
-    if (st.phase === 'away' && st.pt >= st.dur) { st.phase = 'turn'; st.pt = 0; sfx.alarm(); }
+    if (st.phase === 'away' && st.pt >= st.dur) { st.phase = 'turn'; st.pt = 0; game.sfx('alarm', null); }
     else if (st.phase === 'turn' && st.pt >= TURN) { st.phase = 'watch'; st.pt = 0; st.wdur = rng.range(1.3, 2.4); }
     else if (st.phase === 'watch' && st.pt >= st.wdur) this.newAway(st, rng, game);
     for (const p of st.pl) {
@@ -41,9 +40,9 @@ export default {
       if (st.phase === 'watch' && st.pt > GRACE && p.v > 18 && p.caught <= 0) {
         p.caught = 0.9; p.v = 0; p.x = Math.max(START, p.x - 260);
         st.caughtFx.push({ i: p.i, t: 0 });
-        if (p.i === game.local) sfx.bad(); else sfx.miss();
+        game.sfx('bad', p.i); game.sfx('miss', ~p.i);
       }
-      if (p.x >= GOAL) { p.x = GOAL; p.finishT = st.t; st.finished++; p.place = st.finished; if (p.i === game.local) sfx.good(); }
+      if (p.x >= GOAL) { p.x = GOAL; p.finishT = st.t; st.finished++; p.place = st.finished; game.sfx('good', p.i); }
       p.progress = (p.x - START) / (GOAL - START);
     }
     for (const f of st.caughtFx) f.t += dt;

@@ -1,6 +1,5 @@
 // 무너지는 발판 — stand on a tile and it cracks. Keep moving, jump over holes, be the last one standing.
 import { W, H } from '../config.js';
-import { sfx } from '../audio.js';
 import { shade } from '../characters.js';
 
 const COLS = 9, ROWS = 6, TW = 106, TH = 68, DEPTH = 26;
@@ -30,7 +29,7 @@ export default {
     const T = this;
     // tiles
     for (const tl of st.tiles) {
-      if (tl.s === 'crack') { tl.ct += dt; if (tl.ct >= CRACK) { tl.s = 'fall'; tl.ft = 0; sfx.crack(); } }
+      if (tl.s === 'crack') { tl.ct += dt; if (tl.ct >= CRACK) { tl.s = 'fall'; tl.ft = 0; game.sfx('crack', null); } }
       else if (tl.s === 'fall') { tl.ft += dt; if (tl.ft > 1.2) tl.s = 'gone'; }
     }
     // random cracks later in the round
@@ -48,16 +47,16 @@ export default {
       const k = Math.min(1, dt * (p.z > 0 ? 4 : 14));
       p.vx += (mx * SPEED - p.vx) * k; p.vy += (my * SPEED - p.vy) * k;
       if (Math.abs(mx) > 0.2) p.facing = mx > 0 ? 1 : -1;
-      if (!ended && inp.aP && p.z === 0) { p.vz = JUMP_V; p.z = 0.001; sfx.jump(); }
+      if (!ended && inp.aP && p.z === 0) { p.vz = JUMP_V; p.z = 0.001; game.sfx('jump', null); }
       p.x += p.vx * dt; p.y += p.vy * dt * 1.15;
       if (p.z > 0) {
         p.vz -= GRAV * dt; p.z += p.vz * dt;
-        if (p.z <= 0) { p.z = 0; p.vz = 0; sfx.land(); }
+        if (p.z <= 0) { p.z = 0; p.vz = 0; game.sfx('land', null); }
       }
       if (p.z === 0) {
         const tl = T.tile(st, Math.floor(p.x), Math.floor(p.y));
         if (!tl || tl.s === 'fall' || tl.s === 'gone') {
-          p.alive = false; p.deathT = st.t; p.fallT = 0; sfx.fall();
+          p.alive = false; p.deathT = st.t; p.fallT = 0; game.sfx('fall', null);
         } else if (tl.s === 'solid') { tl.s = 'crack'; tl.ct = 0; }
       }
     }

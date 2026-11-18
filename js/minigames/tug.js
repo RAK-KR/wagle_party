@@ -1,5 +1,4 @@
 // 줄다리기 (2:2) — press on the beat to pull hard. Mashing only gives weak pulls. Drag the flag over your line.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
 
 const BEAT = 0.5, WIN = 230, LIMIT = 28, ROPE_Y = 452, CX = W / 2;
@@ -19,7 +18,7 @@ export default {
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt;
     const beat = Math.floor(st.t / BEAT);
-    if (beat !== st.lastBeat && st.winner < 0) { st.lastBeat = beat; beat % 2 ? sfx.hat() : sfx.kick(); }
+    if (beat !== st.lastBeat && st.winner < 0) { st.lastBeat = beat; game.sfx(beat % 2 ? 'hat' : 'kick'); }
     for (const p of st.pl) {
       p.cd = Math.max(0, p.cd - dt); p.pull = Math.max(0, p.pull - dt);
       for (const f of p.fx) f.t += dt; p.fx = p.fx.filter(f => f.t < 0.5);
@@ -28,8 +27,8 @@ export default {
       if (!(inp.aP || inp.pP)) continue;
       const ph = st.t / BEAT, off = Math.abs(ph - Math.round(ph)) * BEAT;
       let force, label, col;
-      if (off <= 0.06) { force = 30; label = '완벽!'; col = COL.accent; p.perfect++; if (p.i === game.local) sfx.perfect(); }
-      else if (off <= 0.12) { force = 16; label = '좋아'; col = COL.good; if (p.i === game.local) sfx.land(); }
+      if (off <= 0.06) { force = 30; label = '완벽!'; col = COL.accent; p.perfect++; game.sfx('perfect', p.i); }
+      else if (off <= 0.12) { force = 16; label = '좋아'; col = COL.good; game.sfx('land', p.i); }
       else { force = 5; label = '삐끗'; col = COL.dim; }
       p.cd = 0.12; p.pull = 0.2;
       p.fx.push({ txt: label, col, t: 0 });
@@ -41,7 +40,7 @@ export default {
       if (st.rope <= -WIN) st.winner = 0;
       else if (st.rope >= WIN) st.winner = 1;
       else if (st.t >= LIMIT) st.winner = Math.abs(st.rope) < 4 ? 2 : st.rope < 0 ? 0 : 1;
-      if (st.winner >= 0) { st.endT = st.t; const mine = st.team[game.local]; (st.winner === mine ? sfx.good : st.winner === 2 ? sfx.miss : sfx.bad)(); }
+      if (st.winner >= 0) { st.endT = st.t; for (let j = 0; j < 4; j++) game.sfx(st.winner === 2 ? 'miss' : st.team[j] === st.winner ? 'good' : 'bad', j); }
     }
   },
   done(st) { return st.winner >= 0 && st.t - st.endT > 1; },

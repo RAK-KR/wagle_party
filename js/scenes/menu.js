@@ -9,6 +9,7 @@ import { makeRng } from '../rng.js';
 import { EMOTES } from '../emotes.js';
 
 let selectedChar = 'punch';
+let roomLinkUsed = false;
 try { selectedChar = localStorage.getItem('wagle.char') || 'punch'; } catch (e) { }
 
 export function titleScene(game) {
@@ -16,11 +17,14 @@ export function titleScene(game) {
   const items = [
     { label: '시작하기', sub: '봇 3명과 대결', go: () => game.go('select', { mode: 'match' }) },
     { label: '미니게임 연습', sub: '하나만 골라서 해 보기', go: () => game.go('select', { mode: 'practice' }) },
-    { label: '온라인 대전', sub: '준비 중', disabled: true },
+    { label: '온라인 대전', sub: '친구와 방 코드로 대결', go: () => game.go('online') },
   ];
   const fakePlayers = ROSTER.map(r => ({ char: r.id, color: r.color, name: r.name }));
   return {
-    enter() { t0 = game.t; setTouchLayout({ stick: false, a: false }); playMusic('menu'); game.players = fakePlayers; game.emotes.reset(); },
+    enter() {
+      t0 = game.t; setTouchLayout({ stick: false, a: false }); playMusic('menu'); game.players = fakePlayers; game.emotes.reset(); game.local = 0;
+      if (!roomLinkUsed && new URLSearchParams(location.search).get('room')) { roomLinkUsed = true; game.go('online'); }
+    },
     update(dt, inp) {
       if (inp.upP) { focus = (focus + items.length - 1) % items.length; if (items[focus].disabled) focus = (focus + items.length - 1) % items.length; sfx.hover(); }
       if (inp.downP) { focus = (focus + 1) % items.length; if (items[focus].disabled) focus = (focus + 1) % items.length; sfx.hover(); }

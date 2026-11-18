@@ -1,5 +1,4 @@
 // 레이저 줄넘기 — laser bars slide across the stage. Jump over low ones, duck under high ones. Last one standing.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, survivalScores } from './common.js';
 
 const FLOOR = 560, XL = 150, XR = 1130, LIMIT = 45, SPEED = 250, JV = 640, G = 1900, BAR = 120;
@@ -36,10 +35,10 @@ export default {
         gap += d2;
       }
       st.next = st.t + gap;
-      sfx.alarm();
+      game.sfx('alarm', null);
     }
     for (const b of st.beams) {
-      if (b.warn > 0) { b.warn -= dt; if (b.warn <= 0) { b.active = true; sfx.whoosh(); } continue; }
+      if (b.warn > 0) { b.warn -= dt; if (b.warn <= 0) { b.active = true; game.sfx('whoosh', null); } continue; }
       b.x += b.dir * b.speed * dt;
     }
     st.beams = st.beams.filter(b => !(b.active && (b.x < XL - BAR * 2 || b.x > XR + BAR * 2)));
@@ -51,7 +50,7 @@ export default {
       p.vx += (target - p.vx) * Math.min(1, dt * 14);
       if (Math.abs(inp.mx) > 0.2) p.facing = inp.mx > 0 ? 1 : -1;
       p.x = clamp(p.x + p.vx * dt, XL + 20, XR - 20);
-      if (!ended && inp.aP && p.z === 0) { p.vz = JV; p.z = 0.01; sfx.jump(); }
+      if (!ended && inp.aP && p.z === 0) { p.vz = JV; p.z = 0.01; game.sfx('jump', null); }
       if (p.z > 0) { p.vz -= G * dt; p.z += p.vz * dt; if (p.z <= 0) { p.z = 0; p.vz = 0; } }
       // hit test
       const top = p.z + (p.duck ? DUCK_TOP : STAND_TOP), bottom = p.z;
@@ -59,7 +58,7 @@ export default {
         if (!b.active || Math.abs(b.x - p.x) > BAR / 2 + 16) continue;
         const by = b.kind === 'low' ? LOW_Y : HIGH_Y;
         if (by > bottom + 4 && by < top - 4) {
-          p.alive = false; p.deathT = st.t; p.ft = 0; p.fvx = b.dir * 380; p.fvy = -600; sfx.bomb(); break;
+          p.alive = false; p.deathT = st.t; p.ft = 0; p.fvx = b.dir * 380; p.fvy = -600; game.sfx('bomb', null); break;
         }
       }
     }

@@ -1,6 +1,5 @@
 // 딱 맞춰 멈춰 — the timer disappears after a moment. Stop it as close to the target as you can. 3 rounds.
 import { W, H, COL } from '../config.js';
-import { sfx } from '../audio.js';
 import { shade } from '../characters.js';
 import { text } from '../ui.js';
 
@@ -29,22 +28,22 @@ export default {
     st.t += dt; st.pt += dt;
     if (st.phase === 'show') {
       if (st.needBot) { st.needBot = false; this.newBotTimes(st, game, rng); }
-      if (st.pt >= SHOW) { st.phase = 'run'; st.pt = 0; sfx.tick(); }
+      if (st.pt >= SHOW) { st.phase = 'run'; st.pt = 0; game.sfx('tick', null); }
     } else if (st.phase === 'run') {
       for (let i = 0; i < 4; i++) {
         if (st.stops[i] == null && (inputs[i].aP || inputs[i].pP) && !ended) {
-          st.stops[i] = st.pt; if (i === game.local) sfx.stop();
+          st.stops[i] = st.pt; game.sfx('stop', i);
         }
       }
       const T = st.targets[st.round];
       if (st.stops.every(s => s != null) || st.pt > T + OVER) {
         for (let i = 0; i < 4; i++) if (st.stops[i] == null) st.stops[i] = T + OVER;
-        st.phase = 'reveal'; st.pt = 0; sfx.whoosh();
+        st.phase = 'reveal'; st.pt = 0; game.sfx('whoosh', null);
         const e = st.stops.map(s => Math.abs(s - T));
         st.history.push({ T, stops: st.stops.slice(), e });
         for (let i = 0; i < 4; i++) st.err[i] += e[i];
         const best = Math.min(...e);
-        if (e[game.local] === best) setTimeout(() => sfx.good(), 400); else setTimeout(() => sfx.bad(), 400);
+        for (let j = 0; j < 4; j++) game.sfx(e[j] === best ? 'good' : 'bad', j, undefined, 0.4);
       }
     } else if (st.phase === 'reveal') {
       if (st.pt >= REVEAL) {

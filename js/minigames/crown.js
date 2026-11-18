@@ -1,37 +1,36 @@
 // 왕관 차지 — hold the crown as long as you can. Touch the holder to steal it.
-import { sfx } from '../audio.js';
 import { W, H, COL, text, byDiff, clamp, crown } from './common.js';
 
 const CX = W / 2, CY = 400, R = 330, YS = 0.62, LIMIT = 30, SPEED = 275, HOLD_SPEED = 252;
 
 export default {
   id: 'crown', name: '왕관 차지', typeLabel: '캐릭터 조작', color: '#e8b830',
-  rule: '왕관을 오래 갖고 있을수록 점수가 올라갑니다. 왕관을 쓴 사람에게 닿으면 빼앗을 수 있습니다.',
-  controls: [['이동', 'WASD / 방향키'], ['돌진', 'Space (1.4초마다)']],
+  rule: '왕관을 오래 쓰고 있을수록 점수가 올라갑니다. 왕관을 쓴 사람에게 돌진(Space)으로 부딪혀야 빼앗을 수 있고, 그냥 닿는 건 소용없습니다.',
+  controls: [['이동', 'WASD / 방향키'], ['돌진', 'Space (뺏기, 도망가기 / 1.2초마다)']],
   touch: { stick: true, a: true, aLabel: '돌진' },
 
   init() {
     return {
       t: 0, holder: -1, immune: 0, flash: 0,
-      pl: [0, 1, 2, 3].map(i => { const a = Math.PI / 4 + i * Math.PI / 2; return { i, x: Math.cos(a) * 230, y: Math.sin(a) * 230, vx: 0, vy: 0, cd: 0, dash: 0, held: 0, facing: Math.cos(a) < 0 ? 1 : -1, bot: { next: 0, jx: 0, jy: 0 } }; }),
+      pl: [0, 1, 2, 3].map(i => { const a = Math.PI / 4 + i * Math.PI / 2; return { i, x: Math.cos(a) * 230, y: Math.sin(a) * 230, vx: 0, vy: 0, cd: 0, dash: 0, held: 0, daze: 0, facing: Math.cos(a) < 0 ? 1 : -1, bot: { next: 0, jx: 0, jy: 0 } }; }),
     };
   },
   update(st, dt, inputs, game, rng, ended) {
     st.t += dt; st.immune = Math.max(0, st.immune - dt); st.flash = Math.max(0, st.flash - dt);
     for (const p of st.pl) {
-      p.cd = Math.max(0, p.cd - dt); p.dash = Math.max(0, p.dash - dt);
-      const inp = ended ? { mx: 0, my: 0 } : inputs[p.i];
+      p.cd = Math.max(0, p.cd - dt); p.dash = Math.max(0, p.dash - dt); p.daze = Math.max(0, p.daze - dt);
+      const inp = ended || p.daze > 0 ? { mx: 0, my: 0 } : inputs[p.i];
       let mx = inp.mx, my = inp.my; const l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
-      const sp = st.holder === p.i ? HOLD_SPEED : SPEED;
+      const sp = SPEED;
       if (p.dash <= 0) { const k = Math.min(1, dt * 12); p.vx += (mx * sp - p.vx) * k; p.vy += (my * sp - p.vy) * k; }
       if (Math.abs(mx) > 0.2) p.facing = mx > 0 ? 1 : -1;
-      if (!ended && inp.aP && p.cd === 0 && l > 0.1) { p.vx = mx / Math.max(l, 0.01) * 640; p.vy = my / Math.max(l, 0.01) * 640; p.dash = 0.18; p.cd = 1.4; sfx.boost(); }
+      if (!ended && inp.aP && p.cd === 0 && l > 0.1) { p.vx = mx / Math.max(l, 0.01) * 700; p.vy = my / Math.max(l, 0.01) * 700; p.dash = 0.2; p.cd = 1.2; game.sfx('boost', null); }
       p.x += p.vx * dt; p.y += p.vy * dt;
       const d = Math.hypot(p.x, p.y); if (d > R - 26) { p.x *= (R - 26) / d; p.y *= (R - 26) / d; }
       if (st.holder === p.i && !ended && st.t < LIMIT) p.held += dt;
     }
     // first grab
-    if (st.holder < 0) for (const p of st.pl) if (Math.hypot(p.x, p.y) < 40) { st.holder = p.i; st.immune = 0.8; st.flash = 0.4; sfx.coin(); break; }
+    if (st.holder < 0) for (const p of st.pl) if (Math.hypot(p.x, p.y) < 40) { st.holder = p.i; st.immune = 0.8; st.flash = 0.4; game.sfx('coin', null); break; }
     // collisions + steals
     for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
       const A = st.pl[a], B = st.pl[b];
@@ -39,11 +38,16 @@ export default {
       if (d < 48 && d > 0.01) {
         const nx = dx / d, ny = dy / d, o = (48 - d) / 2;
         A.x -= nx * o; A.y -= ny * o; B.x += nx * o; B.y += ny * o;
-        if (!ended && st.immune <= 0 && (st.holder === a || st.holder === b)) {
-          const thief = st.holder === a ? B : A, victim = st.holder === a ? A : B;
-          st.holder = thief.i; st.immune = 1.4; st.flash = 0.4;
-          const s = victim === A ? -1 : 1; victim.vx = nx * 380 * s; victim.vy = ny * 380 * s; victim.dash = 0.15;
-          sfx.bump(1); if (thief.i === game.local) sfx.coin();
+        const attacker = st.holder === a ? B : st.holder === b ? A : null;   // the other one in this collision
+        if (!ended && attacker && attacker.dash > 0 && st.immune <= 0) {
+          const victim = st.pl[st.holder];
+          st.holder = attacker.i; st.immune = 1.2; st.flash = 0.4;
+          const s = victim === A ? -1 : 1; victim.vx = nx * 420 * s; victim.vy = ny * 420 * s; victim.dash = 0.15; victim.daze = 0.5;
+          game.sfx('bump', null, 1); game.sfx('coin', attacker.i);
+        } else if (A.dash <= 0 && B.dash <= 0) {
+          // plain contact: just a soft push
+          const rel = (A.vx - B.vx) * nx + (A.vy - B.vy) * ny;
+          if (rel > 0) { A.vx -= nx * rel * 0.5; A.vy -= ny * rel * 0.5; B.vx += nx * rel * 0.5; B.vy += ny * rel * 0.5; }
         }
       }
     }
@@ -64,13 +68,14 @@ export default {
       const d = Math.hypot(p.x, p.y);
       if (d > R * 0.55) { const k = (d - R * 0.55) / (R * 0.45) * 2.2; fx -= p.x / d * k; fy -= p.y / d * k; fx += -p.y / d * k * 0.8; fy += p.x / d * k * 0.8; }
       const l = Math.hypot(fx, fy) || 1;
-      return { mx: fx / l + b.jx, my: fy / l + b.jy, a: p.cd === 0 && rng.next() < dashP * 0.6 };
+      let near = 1e9; for (const o of st.pl) if (o !== p) near = Math.min(near, Math.hypot(o.x - p.x, o.y - p.y));
+      return { mx: fx / l + b.jx, my: fy / l + b.jy, a: p.cd === 0 && near < 110 && rng.next() < dashP * 3 };
     }
     const h = st.pl[st.holder];
     const dist = Math.hypot(h.x - p.x, h.y - p.y);
     const tx = h.x + h.vx * lead * Math.min(1, dist / 200), ty = h.y + h.vy * lead * Math.min(1, dist / 200);
     let mx = tx - p.x, my = ty - p.y; const l = Math.hypot(mx, my) || 1;
-    return { mx: mx / l + b.jx, my: my / l + b.jy, a: p.cd === 0 && dist < 170 && st.immune <= 0.1 && rng.next() < dashP };
+    return { mx: mx / l + b.jx, my: my / l + b.jy, a: p.cd === 0 && dist < 150 && st.immune <= 0.05 && rng.next() < dashP * 4 };
   },
 
   render(ctx, st, game) {

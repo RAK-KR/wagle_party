@@ -21,7 +21,7 @@ let touchA = false, touchEmoteP = false;
 
 const MAP = {
   left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
-  a: ['Space', 'KeyJ', 'KeyZ', 'Enter'],
+  a: ['Space', 'KeyJ', 'KeyZ'],
 };
 const any = (list) => list.some(k => keys.has(k));
 const anyP = (list) => list.some(k => pressed.has(k));
@@ -99,7 +99,7 @@ export function readInput() {
     upP: anyP(MAP.up), downP: anyP(MAP.down), leftP: anyP(MAP.left), rightP: anyP(MAP.right),
     px: ptr.x, py: ptr.y, pDown: ptr.down, pP: ptr.p, pR: ptr.r,
     gDown: keys.has('KeyG'), gP: pressed.has('KeyG'), gR: released.has('KeyG'),
-    escP: pressed.has('Escape'), mP: pressed.has('KeyM'), hP: pressed.has('KeyH'),
+    escP: pressed.has('Escape'), mP: pressed.has('KeyM'), hP: pressed.has('KeyH'), enterP: pressed.has('Enter') || pressed.has('NumpadEnter'),
     emoteTouchP: touchEmoteP, touch: isTouch,
   };
 }
