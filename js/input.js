@@ -112,20 +112,20 @@ export function drawTouchUI(ctx, showEmote = true) {
   ctx.save();
   ctx.globalAlpha = 0.85;
   // menu
-  circle(ctx, MBTN, 'rgba(20,16,30,0.55)', 'rgba(255,255,255,0.35)');
-  ctx.fillStyle = '#fff'; for (let i = -1; i <= 1; i++) ctx.fillRect(MBTN.x - 10, MBTN.y + i * 7 - 1.5, 20, 3);
+  circle(ctx, MBTN, 'rgba(251,248,255,0.85)', '#43386e');
+  ctx.fillStyle = '#43386e'; for (let i = -1; i <= 1; i++) ctx.fillRect(MBTN.x - 10, MBTN.y + i * 7 - 1.5, 20, 3);
   if (showEmote) {
-    circle(ctx, EBTN, 'rgba(20,16,30,0.55)', 'rgba(255,255,255,0.35)');
-    ctx.fillStyle = '#fff'; ctx.font = `700 15px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    circle(ctx, EBTN, 'rgba(251,248,255,0.85)', '#43386e');
+    ctx.fillStyle = '#43386e'; ctx.font = `700 15px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('감정', EBTN.x, EBTN.y);
   }
   if (touchLayout.stick) {
-    circle(ctx, STICK, 'rgba(20,16,30,0.35)', 'rgba(255,255,255,0.25)');
-    circle(ctx, { x: STICK.x + stick.dx * STICK.r * 0.6, y: STICK.y + stick.dy * STICK.r * 0.6, r: 38 }, 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.6)');
+    circle(ctx, STICK, 'rgba(251,248,255,0.45)', 'rgba(67,56,110,0.6)');
+    circle(ctx, { x: STICK.x + stick.dx * STICK.r * 0.6, y: STICK.y + stick.dy * STICK.r * 0.6, r: 38 }, 'rgba(196,181,253,0.85)', '#43386e');
   }
   if (touchLayout.a) {
-    circle(ctx, ABTN, touchA ? 'rgba(255,207,58,0.75)' : 'rgba(255,207,58,0.4)', 'rgba(255,255,255,0.6)');
-    ctx.fillStyle = '#1b1824'; ctx.font = `900 30px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    circle(ctx, ABTN, touchA ? 'rgba(255,215,110,0.95)' : 'rgba(255,215,110,0.7)', '#43386e');
+    ctx.fillStyle = '#43386e'; ctx.font = `900 30px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(touchLayout.aLabel || 'A', ABTN.x, ABTN.y + 1);
   }
   ctx.restore();

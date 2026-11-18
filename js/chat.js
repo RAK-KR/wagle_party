@@ -1,3 +1,4 @@
+import { W } from './config.js';
 // Chat input box (a real text field so Korean typing works). Enter sends, Esc closes.
 let box = null, field = null, onSend = null;
 
@@ -23,9 +24,15 @@ function build() {
   field.addEventListener('blur', () => setTimeout(close, 0));
 }
 
-export function openChat(send) {
+// at: optional rect in game coordinates (1280x720) to place the field over; default is bottom center
+export function openChat(send, at = null) {
   if (!box) build();
   onSend = send;
+  const cv = document.getElementById('game');
+  if (at && cv) {
+    const b = cv.getBoundingClientRect(), k = b.width / W;
+    Object.assign(box.style, { left: (b.left + at.x * k) + 'px', top: (b.top + at.y * k) + 'px', bottom: 'auto', width: (at.w * k) + 'px', transform: 'none' });
+  } else Object.assign(box.style, { left: '50%', top: 'auto', bottom: '18px', width: '', transform: 'translateX(-50%)' });
   box.style.display = 'block';
   setTimeout(() => field.focus(), 0);
 }

@@ -1,5 +1,5 @@
 // 열기구 별 모으기 — hold to heat and rise, let go to sink. Collect stars, dodge birds.
-import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, star, QW, QH } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, star, QW, QH, softBg, INK } from './common.js';
 
 const LIMIT = 34, BX = 150, TOP = 64, BOT = 268, SCROLL0 = 210, LIFT = 560, GRAV = 300, VMAX = 230;
 
@@ -87,16 +87,16 @@ export default {
   },
 
   render(ctx, st, game) {
-    ctx.fillStyle = '#1b1824'; ctx.fillRect(0, 0, W, H);
+    softBg(ctx);
     const travel = SCROLL0 * st.t + 1.1 * st.t * st.t;
     for (let i = 0; i < 4; i++) {
       const p = st.pl[i], pl = game.players[i];
       inPanel(ctx, i, () => {
-        const g = ctx.createLinearGradient(0, 0, 0, QH); g.addColorStop(0, '#7ec8ff'); g.addColorStop(1, '#ffe6c4');
+        const g = ctx.createLinearGradient(0, 0, 0, QH); g.addColorStop(0, '#b8e0ff'); g.addColorStop(1, '#fff0dc');
         ctx.fillStyle = g; ctx.fillRect(0, 0, QW, QH);
         ctx.fillStyle = 'rgba(255,240,180,0.9)'; ctx.beginPath(); ctx.arc(520, 70, 26, 0, Math.PI * 2); ctx.fill();
         // far hills + clouds parallax
-        ctx.fillStyle = '#a8d48c';
+        ctx.fillStyle = '#c4e8b2';
         for (let k = -1; k < 6; k++) { const x = ((k * 200 - travel * 0.15) % 1000 + 1000) % 1000 - 200; ctx.beginPath(); ctx.ellipse(x, QH + 10, 150, 50, 0, 0, Math.PI * 2); ctx.fill(); }
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         for (let k = 0; k < 5; k++) { const x = ((k * 170 - travel * 0.4) % 850 + 850) % 850 - 100, y = 70 + (k * 53) % 160; ctx.beginPath(); ctx.ellipse(x, y, 42, 14, 0, 0, Math.PI * 2); ctx.ellipse(x + 22, y - 8, 26, 13, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -111,7 +111,7 @@ export default {
         for (const l of p.lost) star(ctx, l.x, l.y, 11, `rgba(255,207,58,${1 - l.t})`, `rgba(154,107,0,${1 - l.t})`);
         drawBalloon(ctx, game, i, BX, p.y, p.heat, p.hit > 0 && Math.sin(st.t * 30) > 0, st.t, p.hit > 0 ? 'lose' : p.gain > 0 ? 'win' : 'idle');
         panelHeader(ctx, game, i, `★ ${p.stars}`);
-        if (i === game.local && !game.auto && st.t < 4) text(ctx, 'Space를 누르고 있으면 떠오릅니다', QW / 2, QH - 16, { size: 17, weight: 900, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 5 });
+        if (i === game.local && !game.auto && st.t < 4) text(ctx, 'Space를 누르고 있으면 떠오릅니다', QW / 2, QH - 16, { size: 18, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 5 });
       });
       panelFrame(ctx, game, i);
     }

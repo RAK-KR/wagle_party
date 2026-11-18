@@ -1,5 +1,5 @@
 // 박자 맞추기 — drum notes scroll in; hit them on the line. Everyone plays the same chart. (drum pattern only, no melody)
-import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, softBg, pcard, INK, rr } from './common.js';
 
 const BPM = 120, STEP = 60 / BPM / 2, LEAD = 2.4, HITX = 250, SPD = 430, ROWY = [140, 290, 440, 590];
 const PERFECT = 0.05, GOOD = 0.1, OK = 0.15;
@@ -69,16 +69,15 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d1534'); g.addColorStop(1, '#0f0b1c');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    softBg(ctx);
     const pulse = Math.max(0, 1 - (((st.t - LEAD) / (STEP * 2)) % 1 + 1) % 1 * 3);
     for (let i = 0; i < 4; i++) {
       const p = st.pl[i], pl = game.players[i], y = ROWY[i];
-      ctx.fillStyle = shade(pl.color, -0.7); ctx.fillRect(0, y - 62, W, 124);
-      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(HITX, y - 4, W - HITX, 8);
+      pcard(ctx, game, i, 10, y - 60, W - 20, 120, { r: 34, shadow: 3, k: 0.62 });
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; rr(ctx, HITX, y - 5, W - HITX - 30, 10, 5); ctx.fill();
       // hit line
-      ctx.fillStyle = `rgba(255,255,255,${0.35 + pulse * 0.4})`; ctx.fillRect(HITX - 3, y - 50, 6, 100);
-      ctx.strokeStyle = pl.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(HITX, y, 30 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${0.6 + pulse * 0.4})`; rr(ctx, HITX - 3, y - 50, 6, 100, 3); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(HITX, y, 30 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
       // notes
       st.notes.forEach((n, k) => {
         const x = HITX + (n.t - st.t) * SPD;
@@ -88,15 +87,15 @@ export default {
         ctx.globalAlpha = j === 'miss' ? 0.3 : 1;
         ctx.fillStyle = n.kind === 'kick' ? pl.color : shade(pl.color, 0.45);
         ctx.beginPath(); ctx.arc(x, y, n.kind === 'kick' ? 24 : 18, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1b1824'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
         ctx.globalAlpha = 1;
       });
       // character
       game.drawPlayer(ctx, i, 92, y + 50 - p.bounce * 60, 86, { tag: true, expr: p.combo >= 8 ? 'win' : p.fx.some(f => f.txt === '놓침' || f.txt === '헛침') ? 'lose' : 'idle' });
-      for (const f of p.fx) text(ctx, f.txt, HITX, y - 40 - f.t * 40, { size: 20, weight: 900, align: 'center', color: f.col, alpha: 1 - f.t * 2, stroke: '#1b1824', strokeW: 4 });
-      text(ctx, `${p.score}`, W - 24, y - 24, { size: 30, weight: 900, align: 'right', color: '#fff' });
-      if (p.combo >= 3) text(ctx, `${p.combo} 콤보`, W - 24, y + 4, { size: 16, weight: 900, align: 'right', color: COL.accent });
+      for (const f of p.fx) text(ctx, f.txt, HITX, y - 40 - f.t * 40, { size: 20, weight: 900, align: 'center', color: f.col, alpha: 1 - f.t * 2, stroke: INK, strokeW: 5, title: true });
+      text(ctx, `${p.score}`, W - 24, y - 24, { size: 32, title: true, align: 'right', color: '#fff', stroke: INK, strokeW: 6 });
+      if (p.combo >= 3) text(ctx, `${p.combo} 콤보`, W - 24, y + 4, { size: 17, title: true, align: 'right', color: COL.accent, stroke: INK, strokeW: 4 });
     }
-    if (st.t < LEAD) text(ctx, '박자에 맞춰 준비...', W / 2, 70, { size: 24, weight: 900, align: 'center', color: COL.sub });
+    if (st.t < LEAD) text(ctx, '박자에 맞춰 준비...', W / 2, 70, { size: 26, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 6 });
   },
 };

@@ -1,5 +1,5 @@
 // 컬링 — take turns sliding stones toward the target. Knock others away. 2 stones each, closest stones score.
-import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, softBg, pcard, nameText, hudPill, INK, rr } from './common.js';
 
 const IX0 = 40, IX1 = 1240, IY0 = 150, IY1 = 620, HX = 150, HY = (IY0 + IY1) / 2, TX = 1030, TY = HY;
 const SR = 20, FR = 150, V0 = 760, AMAX = 0.2, PMIN = 0.35, RINGS = [34, 74, 118], SHOTS = 2, IDLE = 7;
@@ -72,7 +72,7 @@ export default {
   done(st) { return st.end && st.t - st.endT > 1.5; },
   scores(st) { const { pts, best } = this.tally(st); return pts.map((p, i) => p * 10000 - Math.min(best[i], 9999)); },
   detail(st, i) { const { pts } = this.tally(st); return `${pts[i]}점`; },
-  hud(ctx, st, game) { if (!st.end) text(ctx, `${game.players[st.order[st.turn]].name} 차례  (${st.turn + 1}/${st.order.length})`, W / 2, 33, { size: 20, weight: 900, align: 'center', color: game.players[st.order[st.turn]].color }); },
+  hud(ctx, st, game) { if (!st.end) hudPill(ctx, `${game.players[st.order[st.turn]].name} 차례  (${st.turn + 1}/${st.order.length})`, game.players[st.order[st.turn]].color); },
 
   bot(st, i, game, rng) {
     if (st.end || st.order[st.turn] !== i || st.phase === 'slide') return {};
@@ -96,19 +96,21 @@ export default {
   },
 
   render(ctx, st, game) {
-    ctx.fillStyle = '#1d2a3a'; ctx.fillRect(0, 0, W, H);
+    softBg(ctx, '#dfe9ff', '#d9f2f7');
     // ice sheet
     const g = ctx.createLinearGradient(0, IY0, 0, IY1); g.addColorStop(0, '#eef8ff'); g.addColorStop(1, '#d4ecf7');
-    ctx.fillStyle = g; ctx.fillRect(IX0, IY0, IX1 - IX0, IY1 - IY0);
-    ctx.strokeStyle = '#8a9fb0'; ctx.lineWidth = 6; ctx.strokeRect(IX0, IY0, IX1 - IX0, IY1 - IY0);
+    ctx.save(); ctx.fillStyle = 'rgba(70,50,140,0.18)'; rr(ctx, IX0, IY0 + 6, IX1 - IX0, IY1 - IY0, 30); ctx.fill(); ctx.restore();
+    ctx.fillStyle = g; rr(ctx, IX0, IY0, IX1 - IX0, IY1 - IY0, 30); ctx.fill();
+    ctx.save(); rr(ctx, IX0, IY0, IX1 - IX0, IY1 - IY0, 30); ctx.clip();
     ctx.strokeStyle = 'rgba(120,160,190,0.25)'; ctx.lineWidth = 1; for (let k = 0; k < 12; k++) { ctx.beginPath(); ctx.moveTo(IX0, IY0 + 20 + k * 38); ctx.lineTo(IX1, IY0 + 30 + k * 38); ctx.stroke(); }
     ctx.fillStyle = 'rgba(232,71,63,0.6)'; ctx.fillRect(TX - 220, IY0, 4, IY1 - IY0);
+    ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 4; rr(ctx, IX0, IY0, IX1 - IX0, IY1 - IY0, 30); ctx.stroke();
     // house
-    const cols = ['#3b6fd8', '#ffffff', '#e8473f'];
+    const cols = ['#7fa4f0', '#ffffff', '#f08080'];
     [RINGS[2], RINGS[1], RINGS[0]].forEach((r, k) => { ctx.fillStyle = cols[k]; ctx.beginPath(); ctx.arc(TX, TY, r, 0, Math.PI * 2); ctx.fill(); });
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(TX, TY, 10, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(TX, IY0); ctx.lineTo(TX, IY1); ctx.moveTo(IX0, TY); ctx.lineTo(IX1, TY); ctx.stroke();
-    ctx.fillStyle = '#2a2433'; ctx.fillRect(HX - 6, HY - 16, 12, 32);
+    ctx.fillStyle = INK; rr(ctx, HX - 6, HY - 16, 12, 32, 6); ctx.fill();
     // stones
     for (const s of st.stones) if (!s.out) drawStone(ctx, s.x, s.y, game.players[s.owner].color);
     for (const f of st.flash) { ctx.strokeStyle = `rgba(255,255,255,${1 - f.t})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, f.y, 10 + f.t * 40, 0, Math.PI * 2); ctx.stroke(); }
@@ -120,23 +122,22 @@ export default {
       ctx.strokeStyle = game.players[who].color; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
       ctx.beginPath(); ctx.moveTo(HX + 30, HY); ctx.lineTo(HX + 30 + Math.cos(st.ang) * 420, HY + Math.sin(st.ang) * 420); ctx.stroke(); ctx.setLineDash([]);
       // power gauge
-      ctx.fillStyle = 'rgba(27,24,36,0.7)'; ctx.fillRect(IX0 + 14, IY1 - 200, 20, 180);
+      ctx.fillStyle = 'rgba(67,56,110,0.25)'; rr(ctx, IX0 + 14, IY1 - 200, 20, 180, 10); ctx.fill();
       if (st.phase === 'power') { const h = 180 * (st.pow - PMIN) / (1 - PMIN); const pg = ctx.createLinearGradient(0, IY1 - 20, 0, IY1 - 200); pg.addColorStop(0, '#6ee08a'); pg.addColorStop(0.6, '#ffcf3a'); pg.addColorStop(1, '#ff5d6c'); ctx.fillStyle = pg; ctx.fillRect(IX0 + 14, IY1 - 20 - h, 20, h); }
-      if (who === game.local && !game.auto) text(ctx, st.phase === 'aim' ? 'Space: 방향 정하기' : 'Space: 힘 정하고 밀기!', W / 2, IY1 + 40, { size: 22, weight: 900, align: 'center', color: COL.accent });
+      if (who === game.local && !game.auto) text(ctx, st.phase === 'aim' ? 'Space: 방향 정하기' : 'Space: 힘 정하고 밀기!', W / 2, IY1 + 40, { size: 24, title: true, align: 'center', color: COL.accent, stroke: INK, strokeW: 6 });
     }
     // score strip
     const { pts } = this.tally(st);
     for (let i = 0; i < 4; i++) {
       const p = game.players[i], x = 90 + i * 290, y = 64;
       const thrown = st.order.slice(0, st.turn).filter(o => o === i).length;
-      ctx.fillStyle = shade(p.color, -0.6); ctx.fillRect(x, y, 240, 70);
-      ctx.fillStyle = p.color; ctx.fillRect(x, y, 5, 70);
+      pcard(ctx, game, i, x, y, 240, 70, { r: 26 });
       game.drawPlayer(ctx, i, x + 40, y + 64, 50, { expr: st.end ? (pts[i] === Math.max(...pts) ? 'win' : 'idle') : 'idle' });
-      text(ctx, p.name, x + 80, y + 28, { size: 16, weight: 900, color: p.color });
-      text(ctx, `${pts[i]}점`, x + 80, y + 58, { size: 22, weight: 900 });
-      for (let k = 0; k < SHOTS; k++) { ctx.fillStyle = k < SHOTS - thrown ? p.color : 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(x + 200 + k * 20, y + 50, 7, 0, Math.PI * 2); ctx.fill(); }
+      nameText(ctx, p.name, x + 80, y + 28, 17, 'left');
+      text(ctx, `${pts[i]}점`, x + 80, y + 58, { size: 23, title: true, color: INK });
+      for (let k = 0; k < SHOTS; k++) { ctx.fillStyle = k < SHOTS - thrown ? p.color : 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(x + 200 + k * 20, y + 50, 7, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); }
     }
-    if (st.end) text(ctx, '점수: 빨강 3 · 하양 2 · 파랑 1', W / 2, IY1 + 40, { size: 20, weight: 900, align: 'center', color: COL.sub });
+    if (st.end) text(ctx, '점수: 빨강 3 · 하양 2 · 파랑 1', W / 2, IY1 + 40, { size: 21, title: true, align: 'center', color: INK });
   },
 };
 

@@ -1,5 +1,5 @@
 // 컵 섞기 — a star hides under one cup; the cups shuffle. Pick the right cup. 5 rounds, getting faster.
-import { W, H, COL, text, byDiff, clamp, shade, star } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, star, softBg, pcard, scard, nameText, hudPill, INK, rr } from './common.js';
 
 const ROUNDS = 5, TABLE_Y = 470, PICK = 7;
 const cupX = (n, slot) => W / 2 + (slot - (n - 1) / 2) * (n === 3 ? 250 : 200);
@@ -78,7 +78,7 @@ export default {
   done(st) { return st.phase === 'end'; },
   scores(st) { return st.score.slice(); },
   detail(st, i) { return `${st.score[i]}번 맞힘`; },
-  hud(ctx, st) { text(ctx, `${Math.min(st.round + 1, ROUNDS)} / ${ROUNDS}`, W / 2, 33, { size: 22, weight: 900, align: 'center', color: '#e8473f' }); },
+  hud(ctx, st) { hudPill(ctx, `${Math.min(st.round + 1, ROUNDS)} / ${ROUNDS}`, '#ff8a8a'); },
 
   bot(st, i) {
     if (st.phase !== 'pick' || st.locked[i]) return {};
@@ -89,14 +89,13 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3a1f2a'); g.addColorStop(1, '#140c10');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    softBg(ctx, '#ffe1e6', '#ffeedd');
     // spotlight + table
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    const sg = ctx.createRadialGradient(W / 2, 380, 20, W / 2, 380, 520); sg.addColorStop(0, 'rgba(255,220,180,0.18)'); sg.addColorStop(1, 'rgba(255,220,180,0)');
+    const sg = ctx.createRadialGradient(W / 2, 380, 20, W / 2, 380, 520); sg.addColorStop(0, 'rgba(255,255,255,0.25)'); sg.addColorStop(1, 'rgba(255,220,180,0)');
     ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); ctx.restore();
-    ctx.fillStyle = '#6b3a24'; ctx.beginPath(); ctx.ellipse(W / 2, TABLE_Y + 10, 560, 90, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2f6b44'; ctx.beginPath(); ctx.ellipse(W / 2, TABLE_Y, 540, 80, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d9a98a'; ctx.beginPath(); ctx.ellipse(W / 2, TABLE_Y + 12, 560, 90, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#9fdcb8'; ctx.beginPath(); ctx.ellipse(W / 2, TABLE_Y, 540, 80, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     const reveal = st.phase === 'peek' || st.phase === 'reveal';
     const lift = st.phase === 'peek' ? Math.sin(clamp(st.pt / 1.7, 0, 1) * Math.PI) * 90 : st.phase === 'reveal' ? clamp(st.pt / 0.4, 0, 1) * 90 : 0;
     // cups sorted by depth (back first)
@@ -123,17 +122,16 @@ export default {
     // bottom player strip
     for (let i = 0; i < 4; i++) {
       const p = game.players[i], x = 90 + i * 290;
-      ctx.fillStyle = shade(p.color, -0.6); ctx.fillRect(x, 640, 230, 70);
-      ctx.fillStyle = p.color; ctx.fillRect(x, 640, 5, 70);
+      pcard(ctx, game, i, x, 638, 230, 72, { r: 26 });
       game.drawPlayer(ctx, i, x + 44, 704, 52, { tag: true, expr: st.phase === 'reveal' ? (st.last.ok[i] ? 'win' : 'lose') : 'idle' });
-      text(ctx, p.name, x + 90, 668, { size: 16, weight: 900, color: p.color });
-      text(ctx, st.phase === 'pick' ? (st.locked[i] ? '결정!' : '고르는 중') : `${st.score[i]}점`, x + 90, 698, { size: 18, weight: 900, color: st.phase === 'pick' && st.locked[i] ? COL.accent : COL.text });
+      nameText(ctx, p.name, x + 90, 666, 17, 'left');
+      text(ctx, st.phase === 'pick' ? (st.locked[i] ? '결정!' : '고르는 중') : `${st.score[i]}점`, x + 90, 698, { size: 19, title: true, color: INK });
     }
     if (st.phase === 'pick' && !st.locked[game.local] && !game.auto) {
-      ctx.fillStyle = COL.accent; ctx.fillRect(W / 2 - 120, 584, 240, 46);
-      text(ctx, `결정 (Space)  ${Math.max(0, PICK - st.pt).toFixed(0)}`, W / 2, 615, { size: 20, weight: 900, align: 'center', color: '#1b1824' });
+      scard(ctx, W / 2 - 120, 580, 240, 46, { r: 23, fill: COL.accent, shadow: 4 });
+      text(ctx, `결정 (Space)  ${Math.max(0, PICK - st.pt).toFixed(0)}`, W / 2, 611, { size: 21, title: true, align: 'center', color: INK });
     }
-    text(ctx, st.phase === 'peek' ? '별이 어디 있는지 보세요' : st.phase === 'shuffle' ? '섞는 중...' : st.phase === 'pick' ? '별은 어느 컵에?' : '', W / 2, 110, { size: 34, title: true, align: 'center', color: '#ffe2c4' });
+    text(ctx, st.phase === 'peek' ? '별이 어디 있는지 보세요' : st.phase === 'shuffle' ? '섞는 중...' : st.phase === 'pick' ? '별은 어느 컵에?' : '', W / 2, 110, { size: 36, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 8 });
   },
 };
 

@@ -2,6 +2,7 @@
 import { W, H, COL } from '../config.js';
 import { ROSTER, drawCharacter, shade } from '../characters.js';
 import { text, inRect } from '../ui.js';
+import { pcard, scard, nameText, hudPill, INK } from './common.js';
 
 const QN = 3, ASK = 9, REVEAL = 3.4, LANES = [318, 372, 430];
 const PANEL_Y = 474;
@@ -104,17 +105,17 @@ export default {
     return { num: plan.v, a: st.pt > plan.at };
   },
   hud(ctx, st) {
-    text(ctx, `문제 ${Math.min(st.q + 1, QN)} / ${QN}`, W / 2, 33, { size: 22, weight: 900, align: 'center', color: '#b59cff' });
+    hudPill(ctx, `문제 ${Math.min(st.q + 1, QN)} / ${QN}`, '#b59cff');
   },
 
   render(ctx, st, game) {
     // fairground background
     const g = ctx.createLinearGradient(0, 0, 0, PANEL_Y);
-    g.addColorStop(0, '#ffb98a'); g.addColorStop(1, '#ffe2b8');
+    g.addColorStop(0, '#ffd9c2'); g.addColorStop(1, '#fff0d9');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, PANEL_Y);
     for (let k = 0; k < 7; k++) { // tents
       const x = 40 + k * 190, y = 250, w = 130, h = 70 + (k % 3) * 18;
-      ctx.fillStyle = k % 2 ? '#e8473f' : '#4c6fc4';
+      ctx.fillStyle = k % 2 ? '#f59a9a' : '#9db4ee';
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w / 2, y - h); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
       for (let s = 0; s < 3; s++) { ctx.beginPath(); ctx.moveTo(x + w / 2, y - h); ctx.lineTo(x + w * (0.12 + s * 0.3), y); ctx.lineTo(x + w * (0.22 + s * 0.3), y); ctx.closePath(); ctx.fill(); }
@@ -123,11 +124,11 @@ export default {
     ctx.strokeStyle = '#6b4f3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 70); ctx.quadraticCurveTo(W / 2, 120, W, 70); ctx.stroke();
     for (let k = 0; k < 24; k++) {
       const x = k * (W / 23), y = 70 + Math.sin(k / 23 * Math.PI) * 25;
-      ctx.fillStyle = ['#ffcf3a', '#e8473f', '#5ed0d6', '#79c66b'][k % 4];
+      ctx.fillStyle = ['#ffe08a', '#f7a0a0', '#9fe3e6', '#b5e3a6'][k % 4];
       ctx.beginPath(); ctx.moveTo(x - 12, y); ctx.lineTo(x + 12, y); ctx.lineTo(x, y + 26); ctx.closePath(); ctx.fill();
     }
-    ctx.fillStyle = '#8fcf6a'; ctx.fillRect(0, 250, W, PANEL_Y - 250);
-    ctx.fillStyle = '#d9b37a'; ctx.fillRect(0, 286, W, 170);
+    ctx.fillStyle = '#bfe6a8'; ctx.fillRect(0, 250, W, PANEL_Y - 250);
+    ctx.fillStyle = '#ecd2a8'; ctx.fillRect(0, 286, W, 170);
     ctx.fillStyle = 'rgba(0,0,0,0.06)'; for (let k = 0; k < 3; k++) ctx.fillRect(0, 300 + k * 56, W, 3);
 
     if (st.phase === 'parade') {
@@ -140,42 +141,41 @@ export default {
         drawCharacter(ctx, r.id, x, LANES[r.lane] + 20 - hop, r.size * (0.86 + r.lane * 0.09), { t: st.t + r.ph, facing: r.dir, noShadow: hop > 4 });
       }
       const tc = ROSTER.find(r => r.id === st.target);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(W / 2 - 170, 130, 340, 70);
+      scard(ctx, W / 2 - 170, 130, 340, 70, { r: 35, fill: 'rgba(255,255,255,0.92)' });
       drawCharacter(ctx, tc.id, W / 2 - 120, 194, 58, { t: st.t });
-      text(ctx, tc.name + josa(tc.name) + ' 세는 중', W / 2 - 80, 175, { size: 26, title: true, color: shade(tc.color, -0.35) });
+      text(ctx, tc.name + josa(tc.name) + ' 세는 중', W / 2 - 80, 175, { size: 26, title: true, color: tc.color, stroke: INK, strokeW: 6 });
     } else if (st.phase === 'show') {
       const tc = ROSTER.find(r => r.id === st.target);
-      ctx.fillStyle = 'rgba(27,24,36,0.85)'; ctx.fillRect(W / 2 - 360, 150, 720, 290);
+      scard(ctx, W / 2 - 360, 150, 720, 290, { r: 40, fill: '#fbf8ff' });
       drawCharacter(ctx, tc.id, W / 2 - 240, 410, 170, { t: st.t, expr: 'win' });
-      text(ctx, '이번에 셀 캐릭터', W / 2 - 100, 220, { size: 24, weight: 900, color: COL.sub });
-      text(ctx, tc.name, W / 2 - 100, 290, { size: 62, title: true, color: tc.color });
-      text(ctx, '몇 번 지나가는지 세어 보세요', W / 2 - 100, 345, { size: 24, weight: 800 });
+      text(ctx, '이번에 셀 캐릭터', W / 2 - 100, 220, { size: 24, title: true, color: COL.soft });
+      text(ctx, tc.name, W / 2 - 100, 290, { size: 62, title: true, color: tc.color, stroke: INK, strokeW: 10 });
+      text(ctx, '몇 번 지나가는지 세어 보세요', W / 2 - 100, 345, { size: 24, weight: 800, color: INK });
     } else {
       const ch = ROSTER.find(r => r.id === (st.phase === 'reveal' && st.last ? st.last.target : st.target));
-      ctx.fillStyle = 'rgba(27,24,36,0.85)'; ctx.fillRect(W / 2 - 360, 150, 720, 290);
+      scard(ctx, W / 2 - 360, 150, 720, 290, { r: 40, fill: '#fbf8ff' });
       drawCharacter(ctx, ch.id, W / 2 - 240, 410, 170, { t: st.t, expr: 'idle' });
-      text(ctx, ch.name + josa(ch.name), W / 2 - 100, 230, { size: 46, title: true, color: ch.color });
-      text(ctx, '몇 번 지나갔을까요?', W / 2 - 100, 290, { size: 36, title: true });
+      text(ctx, ch.name + josa(ch.name), W / 2 - 100, 230, { size: 46, title: true, color: ch.color, stroke: INK, strokeW: 8 });
+      text(ctx, '몇 번 지나갔을까요?', W / 2 - 100, 290, { size: 36, title: true, color: INK });
       if (st.phase === 'ask') {
         const left = Math.max(0, ASK - st.pt);
-        text(ctx, `남은 시간 ${left.toFixed(1)}초`, W / 2 - 100, 344, { size: 20, weight: 800, color: left < 3 ? COL.bad : COL.sub });
+        text(ctx, `남은 시간 ${left.toFixed(1)}초`, W / 2 - 100, 344, { size: 21, title: true, color: left < 3 ? '#e0566f' : COL.soft });
       } else if (st.last) {
         const k = Math.min(1, st.pt / 0.5);
-        text(ctx, '정답  ' + st.last.count + '번', W / 2 - 100, 400, { size: 52, title: true, color: COL.accent, alpha: k });
+        text(ctx, '정답  ' + st.last.count + '번', W / 2 - 100, 400, { size: 52, title: true, color: COL.accent, stroke: INK, strokeW: 9, alpha: k });
       }
     }
     // answer panels
-    ctx.fillStyle = '#2a2236'; ctx.fillRect(0, PANEL_Y - 6, W, H - PANEL_Y + 6);
+    ctx.fillStyle = '#e4dbff'; ctx.fillRect(0, PANEL_Y - 6, W, H - PANEL_Y + 6); ctx.fillStyle = INK; ctx.fillRect(0, PANEL_Y - 6, W, 4);
     for (let i = 0; i < 4; i++) {
       const r = panelRect(i), p = game.players[i], me = i === game.local;
-      ctx.fillStyle = shade(p.color, -0.6); ctx.fillRect(r.x, r.y, r.w, r.h);
-      ctx.fillStyle = p.color; ctx.fillRect(r.x, r.y, r.w, 5);
+      pcard(ctx, game, i, r.x, r.y, r.w, r.h, { r: 26 });
       let expr = 'idle';
       if (st.phase === 'reveal' && st.last) expr = st.last.e[i] === 0 ? 'win' : st.last.e[i] >= 3 ? 'lose' : 'idle';
       game.drawPlayer(ctx, i, r.x + 60, r.y + 200, 88, { expr, tag: true });
-      text(ctx, p.name, r.x + 60, r.y + 224, { size: 15, weight: 900, align: 'center', color: p.color });
-      text(ctx, `${st.pts[i]}점`, r.x + 16, r.y + 30, { size: 17, weight: 900, color: COL.sub });
-      let numStr = '', ncol = COL.text;
+      nameText(ctx, p.name, r.x + 60, r.y + 224, 16);
+      text(ctx, `${st.pts[i]}점`, r.x + 16, r.y + 30, { size: 18, title: true, color: INK });
+      let numStr = '', ncol = '#fff';
       if (st.phase === 'ask') {
         if (me && !game.auto) numStr = String(st.vals[i]);
         else numStr = st.locked[i] ? '결정!' : '...';
@@ -186,22 +186,22 @@ export default {
       }
       const flash = st.flash[i] > 0 ? 1 + st.flash[i] : 1;
       ctx.save(); ctx.translate(r.x + 158, r.y + 112); ctx.scale(flash, flash);
-      text(ctx, numStr, 0, 0, { size: numStr.length > 2 ? 30 : 68, title: true, align: 'center', base: 'middle', color: ncol });
+      text(ctx, numStr, 0, 0, { size: numStr.length > 2 ? 30 : 68, title: true, align: 'center', base: 'middle', color: ncol, stroke: INK, strokeW: numStr.length > 2 ? 6 : 10 });
       ctx.restore();
       if (st.phase === 'reveal' && st.last && st.pt > 0.5) {
         const gn = st.last.gain[i];
-        text(ctx, gn ? `+${gn}` : '+0', r.x + 270, r.y + 30, { size: 22, weight: 900, align: 'center', color: gn ? COL.good : COL.dim });
+        text(ctx, gn ? `+${gn}` : '+0', r.x + 270, r.y + 30, { size: 23, title: true, align: 'center', color: gn ? COL.good : '#fff', stroke: INK, strokeW: 5 });
       }
       if (me && !game.auto && st.phase === 'ask' && !st.locked[i]) {
         const b = btns(i);
         for (const [key, lab] of [['up', '▲'], ['down', '▼']]) {
-          ctx.fillStyle = '#3b3548'; ctx.fillRect(b[key].x, b[key].y, b[key].w, b[key].h);
-          text(ctx, lab, b[key].x + b[key].w / 2, b[key].y + b[key].h / 2 + 2, { size: 24, weight: 900, align: 'center', base: 'middle' });
+          scard(ctx, b[key].x, b[key].y, b[key].w, b[key].h, { r: 14, fill: '#c4b5fd', shadow: 3, lw: 3 });
+          text(ctx, lab, b[key].x + b[key].w / 2, b[key].y + b[key].h / 2 + 2, { size: 22, weight: 900, align: 'center', base: 'middle', color: INK });
         }
-        ctx.fillStyle = COL.accent; ctx.fillRect(b.ok.x, b.ok.y, b.ok.w, b.ok.h);
-        text(ctx, '결정', b.ok.x + b.ok.w / 2, b.ok.y + b.ok.h / 2 + 2, { size: 22, weight: 900, align: 'center', base: 'middle', color: '#1b1824' });
+        scard(ctx, b.ok.x, b.ok.y, b.ok.w, b.ok.h, { r: 16, fill: COL.accent, shadow: 3, lw: 3 });
+        text(ctx, '결정', b.ok.x + b.ok.w / 2, b.ok.y + b.ok.h / 2 + 3, { size: 23, title: true, align: 'center', base: 'middle', color: INK });
       } else if (st.phase === 'parade' || st.phase === 'show') {
-        text(ctx, '세는 중', r.x + 158, r.y + 120, { size: 22, weight: 800, align: 'center', color: COL.dim });
+        text(ctx, '세는 중', r.x + 158, r.y + 120, { size: 23, title: true, align: 'center', color: COL.soft });
       }
     }
   },

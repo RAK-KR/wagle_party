@@ -1,5 +1,5 @@
 // 레이저 줄넘기 — laser bars slide across the stage. Jump over low ones, duck under high ones. Last one standing.
-import { W, H, COL, text, byDiff, clamp, survivalScores } from './common.js';
+import { W, H, COL, text, byDiff, clamp, survivalScores, INK, rr } from './common.js';
 
 const FLOOR = 560, XL = 150, XR = 1130, LIMIT = 45, SPEED = 250, JV = 640, G = 1900, BAR = 120;
 const LOW_Y = 26, HIGH_Y = 74;          // bar height above floor
@@ -102,26 +102,25 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120c24'); g.addColorStop(1, '#2a1340');
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#e7dcff'); g.addColorStop(1, '#ffd9ea');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // back wall grid
-    ctx.strokeStyle = 'rgba(255,93,143,0.08)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
     for (let x = 0; x < W; x += 64) { ctx.beginPath(); ctx.moveTo(x, 60); ctx.lineTo(x, FLOOR); ctx.stroke(); }
     for (let y = 60; y < FLOOR; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
     // floor
-    ctx.fillStyle = '#1c1430'; ctx.fillRect(0, FLOOR, W, H - FLOOR);
-    ctx.fillStyle = '#ff5d8f'; ctx.fillRect(XL - 30, FLOOR, XR - XL + 60, 4);
-    ctx.fillStyle = 'rgba(255,93,143,0.18)'; ctx.fillRect(XL - 30, FLOOR + 4, XR - XL + 60, 30);
+    ctx.fillStyle = '#cdbdf5'; ctx.fillRect(0, FLOOR, W, H - FLOOR);
+    ctx.fillStyle = INK; ctx.fillRect(0, FLOOR, W, 4);
+    ctx.fillStyle = '#ffb3cb'; rr(ctx, XL - 30, FLOOR + 10, XR - XL + 60, 26, 13); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
     // emitters
     for (const side of [-1, 1]) {
       const x = side < 0 ? XL - 40 : XR + 40;
-      ctx.fillStyle = '#3a2a55'; ctx.fillRect(x - 14, FLOOR - 130, 28, 130);
-      ctx.fillStyle = '#5a4580'; ctx.fillRect(x - 14, FLOOR - 134, 28, 8);
+      ctx.fillStyle = '#a99be0'; rr(ctx, x - 16, FLOOR - 138, 32, 140, 14); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.stroke();
       for (const [hy, kind] of [[LOW_Y, 'low'], [HIGH_Y, 'high']]) {
         const warn = st.beams.find(b => b.warn > 0 && b.kind === kind && (b.dir > 0) === (side < 0));
         const on = warn && Math.sin(st.t * 30) > -0.3;
-        ctx.fillStyle = on ? '#ff3b6b' : '#5a2440'; ctx.beginPath(); ctx.arc(x, FLOOR - hy, 9, 0, Math.PI * 2); ctx.fill();
-        if (warn) text(ctx, kind === 'low' ? '점프!' : '숙여!', x + (side < 0 ? 26 : -26), FLOOR - hy - 14, { size: 18, weight: 900, align: side < 0 ? 'left' : 'right', color: '#ff7aa0', stroke: '#120c24', strokeW: 5 });
+        ctx.fillStyle = on ? '#ff3b6b' : '#f1e9ff'; ctx.beginPath(); ctx.arc(x, FLOOR - hy, 9, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
+        if (warn) text(ctx, kind === 'low' ? '점프!' : '숙여!', x + (side < 0 ? 26 : -26), FLOOR - hy - 14, { size: 20, title: true, align: side < 0 ? 'left' : 'right', color: '#ff5d8f', stroke: INK, strokeW: 5 });
       }
     }
     // players
@@ -132,7 +131,7 @@ export default {
         game.drawPlayer(ctx, p.i, p.x, y, 92, { expr: 'lose', lockExpr: true, rot: p.ft * 9, pivot: true, noShadow: true, alpha: Math.max(0, 1 - p.ft / 1.4) });
         continue;
       }
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, FLOOR + 2, 34 - p.z * 0.08, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(67,56,110,0.22)'; ctx.beginPath(); ctx.ellipse(p.x, FLOOR + 2, 34 - p.z * 0.08, 8, 0, 0, Math.PI * 2); ctx.fill();
       if (p.duck) {
         ctx.save(); ctx.translate(p.x, FLOOR); ctx.scale(1.18, 0.6);
         game.drawPlayer(ctx, p.i, 0, 0, 92, { facing: p.facing, noShadow: true });
@@ -144,12 +143,12 @@ export default {
     for (const b of st.beams) {
       if (!b.active) continue;
       const y = FLOOR - (b.kind === 'low' ? LOW_Y : HIGH_Y);
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = 'rgba(255,40,100,0.25)'; ctx.fillRect(b.x - BAR / 2 - 6, y - 10, BAR + 12, 20);
-      ctx.fillStyle = 'rgba(255,90,140,0.9)'; ctx.fillRect(b.x - BAR / 2, y - 4, BAR, 8);
-      ctx.fillStyle = '#fff'; ctx.fillRect(b.x - BAR / 2, y - 1.5, BAR, 3);
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,60,120,0.25)'; rr(ctx, b.x - BAR / 2 - 6, y - 11, BAR + 12, 22, 11); ctx.fill();
+      ctx.fillStyle = '#ff5d8f'; rr(ctx, b.x - BAR / 2, y - 5, BAR, 10, 5); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.fillRect(b.x - BAR / 2 + 4, y - 1.5, BAR - 8, 3);
       ctx.restore();
-      ctx.fillStyle = '#d8d0e8'; ctx.fillRect(b.x - BAR / 2 - 8, y - 9, 8, 18); ctx.fillRect(b.x + BAR / 2, y - 9, 8, 18);
+      ctx.fillStyle = '#f1e9ff'; rr(ctx, b.x - BAR / 2 - 10, y - 10, 10, 20, 4); ctx.fill(); ctx.stroke(); rr(ctx, b.x + BAR / 2, y - 10, 10, 20, 4); ctx.fill(); ctx.stroke();
     }
   },
 };

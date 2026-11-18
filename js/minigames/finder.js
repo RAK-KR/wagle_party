@@ -1,6 +1,6 @@
 // 같은 얼굴 찾기 — find the one tile that matches the target character AND face. First correct click scores.
 import { ROSTER, drawCharacter } from '../characters.js';
-import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, softBg, scard, hudPill, INK, rr } from './common.js';
 
 const ROUNDS = 7, COLS = 8, ROWS = 4, TW = 132, TH = 112, GX = (W - COLS * TW) / 2, GY = 196, ROUND_LIMIT = 12;
 const EXPRS = ['idle', 'win', 'lose'];
@@ -72,7 +72,7 @@ export default {
   done(st) { return st.phase === 'end'; },
   scores(st) { return st.score.slice(); },
   detail(st, i) { return `${st.score[i]}번 찾음`; },
-  hud(ctx, st) { text(ctx, `${Math.min(st.round + 1, ROUNDS)} / ${ROUNDS}`, W / 2, 33, { size: 22, weight: 900, align: 'center', color: '#f3a3c0' }); },
+  hud(ctx, st) { hudPill(ctx, `${Math.min(st.round + 1, ROUNDS)} / ${ROUNDS}`, '#f3a3c0'); },
 
   bot(st, i, game, rng) {
     const c = st.cursors[i], pl = st.plan[i];
@@ -90,22 +90,20 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3a2440'); g.addColorStop(1, '#1a1220');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    softBg(ctx, '#ffe3f0', '#e9e0ff');
     // target card
-    ctx.fillStyle = '#fff4f8'; ctx.fillRect(W / 2 - 300, 56, 600, 128);
-    ctx.fillStyle = '#f3a3c0'; ctx.fillRect(W / 2 - 300, 56, 600, 6);
+    scard(ctx, W / 2 - 300, 56, 600, 128, { r: 30, fill: '#fffafc' });
     drawCharacter(ctx, st.target.id, W / 2 - 200, 172, 104, { t: st.t, expr: st.target.expr });
     const ch = ROSTER.find(r => r.id === st.target.id);
-    text(ctx, '이 얼굴을 찾으세요', W / 2 - 110, 104, { size: 22, weight: 900, color: '#5a3a4a' });
-    text(ctx, ch.name + '  ·  ' + EXPR_NAME[st.target.expr], W / 2 - 110, 150, { size: 32, title: true, color: shade(ch.color, -0.35) });
+    text(ctx, '이 얼굴을 찾으세요', W / 2 - 110, 104, { size: 22, title: true, color: COL.soft });
+    text(ctx, ch.name + '  ·  ' + EXPR_NAME[st.target.expr], W / 2 - 110, 150, { size: 34, title: true, color: ch.color, stroke: INK, strokeW: 7 });
     // grid
     const flip = st.phase === 'show' ? clamp(st.pt / 0.5, 0, 1) : 1;
     for (let k = 0; k < st.tiles.length; k++) {
       const r = tileRect(k), tl = st.tiles[k];
       const isAns = k === st.ans, rev = st.phase === 'reveal';
-      ctx.fillStyle = rev && isAns ? '#fff3a8' : (k + Math.floor(k / COLS)) % 2 ? '#2c2236' : '#33283f';
-      ctx.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+      ctx.fillStyle = rev && isAns ? '#fff3a8' : (k + Math.floor(k / COLS)) % 2 ? '#fbf7ff' : '#f1eaff';
+      rr(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 16); ctx.fill(); ctx.strokeStyle = 'rgba(67,56,110,0.25)'; ctx.lineWidth = 2; ctx.stroke();
       if (rev && !isAns) ctx.globalAlpha = 0.3;
       ctx.save(); ctx.translate(r.x + r.w / 2, 0); ctx.scale(flip, 1);
       drawCharacter(ctx, tl.id, 0, r.y + r.h - 12, 82, { t: st.t + tl.ph, expr: tl.expr, facing: tl.facing });
@@ -119,23 +117,23 @@ export default {
     }
     if (st.phase === 'reveal') {
       const r = tileRect(st.ans);
-      ctx.strokeStyle = st.winner >= 0 ? game.players[st.winner].color : '#fff'; ctx.lineWidth = 6; ctx.strokeRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
-      text(ctx, st.winner >= 0 ? `${game.players[st.winner].name} 찾았다!` : '아무도 못 찾음', W / 2, 676, { size: 26, weight: 900, align: 'center', color: st.winner >= 0 ? game.players[st.winner].color : COL.sub, stroke: '#1b1824', strokeW: 6 });
+      ctx.strokeStyle = st.winner >= 0 ? game.players[st.winner].color : '#fff'; ctx.lineWidth = 6; rr(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 16); ctx.stroke();
+      text(ctx, st.winner >= 0 ? `${game.players[st.winner].name} 찾았다!` : '아무도 못 찾음', W / 2, 676, { size: 28, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 7 });
     }
     // score strip (bottom) with small characters
     for (let i = 0; i < 4; i++) {
       const p = game.players[i], x = 16 + i * 80;
       game.drawPlayer(ctx, i, x + 28, 712, 34, { expr: st.phase === 'reveal' && st.winner === i ? 'win' : st.lock[i] > 0 ? 'lose' : 'idle' });
-      text(ctx, String(st.score[i]), x + 56, 706, { size: 22, weight: 900, color: p.color });
+      text(ctx, String(st.score[i]), x + 56, 706, { size: 24, title: true, color: '#fff', stroke: INK, strokeW: 5 });
     }
     // cursors
     for (let i = 0; i < 4; i++) {
       if (i === game.local && !game.auto) continue;
       const c = st.cursors[i], col = game.players[i].color;
-      ctx.strokeStyle = '#1b1824'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(c.x, c.y, 14, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(c.x, c.y, 14, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(c.x, c.y, 14, 0, Math.PI * 2); ctx.stroke();
       if (st.lock[i] > 0) text(ctx, '×', c.x, c.y + 6, { size: 22, weight: 900, align: 'center', color: COL.bad });
     }
-    if (st.lock[game.local] > 0 && !game.auto) text(ctx, '틀렸어요! 잠깐 기다리세요', W / 2, 676, { size: 22, weight: 900, align: 'center', color: COL.bad, stroke: '#1b1824', strokeW: 6 });
+    if (st.lock[game.local] > 0 && !game.auto) text(ctx, '틀렸어요! 잠깐 기다리세요', W / 2, 676, { size: 24, title: true, align: 'center', color: COL.bad, stroke: INK, strokeW: 6 });
   },
 };

@@ -1,7 +1,7 @@
 // Helpers shared by minigames
 import { W, H, COL } from '../config.js';
 import { shade } from '../characters.js';
-import { text } from '../ui.js';
+import { text, rr, measure, card, pastel, bgFill } from '../ui.js';
 
 // difficulty index 0 easy, 1 normal, 2 hard
 export const dk = (game) => Math.max(0, Math.min(2, Math.round(game.diff.k * 3) - 1));
@@ -9,27 +9,66 @@ export const byDiff = (game, arr) => arr[dk(game)];
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
 
+// ---- pastel theme helpers ----
+export const INK = COL.ink;
+// soft full-screen background
+export function softBg(ctx, c1 = '#e6ddff', c2 = '#d3ecfb') { bgFill(ctx, W, H, c1, c2); }
+// rounded card tinted with a player's color
+export function pcard(ctx, game, i, x, y, w, h, o = {}) {
+  card(ctx, { x, y, w, h }, { fill: pastel(game.players[i].color, o.k ?? 0.55), raw: true, r: o.r ?? 24, lw: o.lw ?? 3.5, shadow: o.shadow ?? 4, alpha: o.alpha });
+}
+// plain rounded card (light)
+export function scard(ctx, x, y, w, h, o = {}) {
+  card(ctx, { x, y, w, h }, { fill: o.fill || '#fbf8ff', raw: true, r: o.r ?? 22, lw: o.lw ?? 3.5, shadow: o.shadow ?? 4, alpha: o.alpha, gloss: o.gloss });
+}
+// white name text with ink outline
+export function nameText(ctx, str, x, y, size = 18, align = 'center') {
+  text(ctx, str, x, y, { size, title: true, align, color: '#fff', stroke: INK, strokeW: Math.max(3, size * 0.25) });
+}
+// small pill in the middle of the top bar
+export function hudPill(ctx, str, color = '#ffd76e') {
+  const w = measure(ctx, str, 20, 400, true) + 34;
+  card(ctx, { x: W / 2 - w / 2, y: 7, w, h: 32 }, { fill: pastel(color, 0.5), raw: true, r: 16, lw: 3, shadow: 0, gloss: false });
+  text(ctx, str, W / 2, 31, { size: 20, title: true, align: "center", color: INK });
+}
+
+// small score chip: name on the left, value on the right
+export function chip(ctx, game, i, x, y, w, h, value, hot = false) {
+  const p = game.players[i];
+  card(ctx, { x, y, w, h }, { fill: hot ? '#ffe28a' : pastel(p.color, 0.6), raw: true, r: h / 2, lw: 3, shadow: 3, gloss: false });
+  text(ctx, p.name, x + 14, y + h / 2 + 6, { size: 16, title: true, color: '#fff', stroke: INK, strokeW: 4 });
+  text(ctx, String(value), x + w - 14, y + h / 2 + 7, { size: 18, title: true, align: 'right', color: INK });
+}
+
 // 2x2 split-screen panels below the HUD bar
 export const QW = 628, QH = 316;
 export function quad(i) { return { x: 8 + (i % 2) * 636, y: 52 + Math.floor(i / 2) * 334, w: QW, h: QH }; }
 
 export function panelHeader(ctx, game, i, right = '', mid = '') {
   const p = game.players[i];
-  ctx.fillStyle = 'rgba(27,24,36,0.8)'; ctx.fillRect(0, 0, QW, 30);
-  ctx.fillStyle = p.color; ctx.fillRect(0, 0, 6, 30);
-  text(ctx, p.name, 16, 21, { size: 16, weight: 900, color: p.color });
-  if (mid) text(ctx, mid, QW / 2, 21, { size: 15, weight: 800, align: 'center', color: COL.sub });
-  if (right) text(ctx, right, QW - 14, 22, { size: 18, weight: 900, align: 'right', color: COL.accent });
+  // rounded name pill on the left, value pill on the right
+  ctx.font = `20px 'Jua', sans-serif`;
+  const nw = Math.max(70, ctx.measureText(p.name).width + 30);
+  ctx.fillStyle = p.color; ctx.strokeStyle = COL.ink; ctx.lineWidth = 3;
+  rr(ctx, 6, 4, nw, 26, 13); ctx.fill(); ctx.stroke();
+  text(ctx, p.name, 6 + nw / 2, 24, { size: 17, title: true, align: 'center', color: '#fff', stroke: COL.ink, strokeW: 4 });
+  if (mid) text(ctx, mid, QW / 2, 24, { size: 16, title: true, align: 'center', color: '#fff', stroke: COL.ink, strokeW: 4 });
+  if (right) {
+    ctx.font = `20px 'Jua', sans-serif`;
+    const rw = ctx.measureText(String(right)).width + 28;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)'; rr(ctx, QW - rw - 6, 4, rw, 26, 13); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    text(ctx, right, QW - 6 - rw / 2, 24, { size: 18, title: true, align: 'center', color: INK });
+  }
 }
 export function panelFrame(ctx, game, i) {
   const r = quad(i), p = game.players[i], me = i === game.local && !game.auto;
-  ctx.strokeStyle = me ? p.color : 'rgba(255,255,255,0.08)'; ctx.lineWidth = me ? 4 : 2;
-  ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+  ctx.strokeStyle = me ? p.color : COL.ink; ctx.lineWidth = me ? 5 : 4;
+  rr(ctx, r.x + 3, r.y + 3, r.w - 6, r.h - 6, 18); ctx.stroke();
 }
 // run fn inside panel i with clipping and local coordinates
 export function inPanel(ctx, i, fn) {
   const r = quad(i);
-  ctx.save(); ctx.translate(r.x, r.y); ctx.beginPath(); ctx.rect(0, 0, r.w, r.h); ctx.clip();
+  ctx.save(); ctx.translate(r.x, r.y); rr(ctx, 3, 3, r.w - 6, r.h - 6, 18); ctx.clip();
   fn(r); ctx.restore();
 }
 
@@ -66,4 +105,4 @@ export function crown(ctx, x, y, s) {
   ctx.fillStyle = '#5ed0d6'; ctx.beginPath(); ctx.arc(-10, 3, 2.4, 0, Math.PI * 2); ctx.arc(10, 3, 2.4, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
-export { shade, text, COL, W, H };
+export { shade, text, COL, W, H, rr, pastel };

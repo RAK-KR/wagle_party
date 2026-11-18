@@ -1,5 +1,5 @@
 // 숫자 순서대로 — click 1 to 20 in order as fast as you can. Everyone gets the same board.
-import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, raceScores, softBg, pcard, scard, nameText, INK, rr } from './common.js';
 
 const COUNT = 20, R = 34, BX0 = 40, BY0 = 70, BX1 = 880, BY1 = 700, LIMIT = 45;
 const COLS = ['#ff8fa3', '#8fd3ff', '#b59cff', '#9be59b', '#ffb36b', '#ffd36b'];
@@ -66,39 +66,38 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#22324a'); g.addColorStop(1, '#141c2a');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    softBg(ctx);
     const me = st.pl[game.local];
     const sx = me.shake > 0 ? Math.sin(st.t * 80) * 6 : 0;
     ctx.save(); ctx.translate(sx, 0);
-    ctx.fillStyle = '#f4efe6'; ctx.fillRect(BX0, BY0, BX1 - BX0, BY1 - BY0);
+    scard(ctx, BX0, BY0, BX1 - BX0, BY1 - BY0, { r: 26, fill: '#fffaf2', gloss: false });
+    ctx.save(); rr(ctx, BX0, BY0, BX1 - BX0, BY1 - BY0, 26); ctx.clip();
     ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
     for (let x = BX0; x < BX1; x += 30) { ctx.beginPath(); ctx.moveTo(x, BY0); ctx.lineTo(x, BY1); ctx.stroke(); }
     for (let y = BY0; y < BY1; y += 30) { ctx.beginPath(); ctx.moveTo(BX0, y); ctx.lineTo(BX1, y); ctx.stroke(); }
     for (const o of st.nums) {
       const done = o.n < me.next;
       ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.rot);
-      ctx.fillStyle = done ? '#d9d3c8' : o.col; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = done ? '#ebe5f5' : o.col; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
       if (!done) { ctx.strokeStyle = shade(o.col, -0.4); ctx.lineWidth = 3; ctx.stroke(); }
-      text(ctx, String(o.n), 0, 2, { size: 30, weight: 900, align: 'center', base: 'middle', color: done ? '#b8b0a4' : '#1b1824' });
+      text(ctx, String(o.n), 0, 2, { size: 30, weight: 900, align: 'center', base: 'middle', color: done ? '#c9c1dc' : INK });
       ctx.restore();
     }
     for (const q of me.pop) { ctx.strokeStyle = `rgba(110,224,138,${1 - q.t / 0.4})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(q.x, q.y, R + q.t * 60, 0, Math.PI * 2); ctx.stroke(); }
     if (me.pen > 0) { ctx.fillStyle = `rgba(255,93,108,${me.pen * 0.4})`; ctx.fillRect(BX0, BY0, BX1 - BX0, BY1 - BY0); }
-    ctx.restore();
+    ctx.restore(); ctx.restore();
     // next number hint
-    ctx.fillStyle = 'rgba(14,12,19,0.85)'; ctx.fillRect(BX0, BY0, 170, 44);
-    text(ctx, me.finishT != null ? '완료!' : `다음: ${me.next}`, BX0 + 14, BY0 + 31, { size: 24, weight: 900, color: me.finishT != null ? COL.good : COL.accent });
+    scard(ctx, BX0 + 10, BY0 + 10, 170, 44, { r: 22, shadow: 3, fill: '#fff4c9' });
+    text(ctx, me.finishT != null ? '완료!' : `다음: ${me.next}`, BX0 + 95, BY0 + 42, { size: 24, title: true, align: 'center', color: INK });
     // progress column
     for (let i = 0; i < 4; i++) {
       const p = st.pl[i], pl = game.players[i], y = 76 + i * 158, x = 905;
-      ctx.fillStyle = shade(pl.color, -0.6); ctx.fillRect(x, y, 355, 146);
-      ctx.fillStyle = pl.color; ctx.fillRect(x, y, 6, 146);
+      pcard(ctx, game, i, x, y, 355, 146, { r: 26 });
       game.drawPlayer(ctx, i, x + 62, y + 128, 92, { expr: p.finishT != null ? 'win' : p.pen > 0 ? 'lose' : 'idle', tag: true });
-      text(ctx, pl.name, x + 130, y + 40, { size: 20, weight: 900, color: pl.color });
-      text(ctx, p.finishT != null ? `${p.finishT.toFixed(1)}초 완료` : `${p.next - 1} / ${COUNT}`, x + 130, y + 80, { size: 28, weight: 900 });
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + 130, y + 100, 205, 14);
-      ctx.fillStyle = pl.color; ctx.fillRect(x + 130, y + 100, 205 * p.progress, 14);
+      nameText(ctx, pl.name, x + 130, y + 40, 20, 'left');
+      text(ctx, p.finishT != null ? `${p.finishT.toFixed(1)}초 완료` : `${p.next - 1} / ${COUNT}`, x + 130, y + 82, { size: 28, title: true, color: INK });
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; rr(ctx, x + 130, y + 100, 205, 16, 8); ctx.fill();
+      if (p.progress > 0) { ctx.fillStyle = pl.color; rr(ctx, x + 130, y + 100, Math.max(16, 205 * p.progress), 16, 8); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke(); }
     }
   },
 };

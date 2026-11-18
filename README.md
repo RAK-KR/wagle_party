@@ -1,7 +1,5 @@
 # 와글와글 파티 (WAGLE PARTY)
 
-https://rak-kr.github.io/wagle_party/
-
 보드판 없이 미니게임만 연달아 하는 파티 게임입니다. 4명이 겨루고, 빈자리는 봇이 채웁니다.
 
 ## 온라인 대전 (P2P)
@@ -63,24 +61,25 @@ https://rak-kr.github.io/wagle_party/
 ## 파일 구조
 ```
 index.html
-css/style.css
+css/style.css           파스텔 테마 (입장 창, 채팅칸)
+fonts/                  Jua 글꼴 (SIL OFL, JUA-OFL.txt)
 lib/peerjs.min.js       PeerJS (MIT)
 js/main.js              시작, 화면 크기, 메인 루프, 캐릭터 그리기 연결, 소리 이벤트
 js/net.js               P2P 연결 (PeerJS)
 js/online.js            온라인 방: 자리, 입력 전달, 화면 동기화, 채팅
 js/chat.js              채팅 입력창 (한글 입력 두 번 전송 방지)
-js/config.js            상수 (점수, 판 수, 난이도, 색)
+js/config.js            상수 (점수, 판 수, 난이도, 색) — 색은 COL 한곳에서 바꿉니다
 js/characters.js        캐릭터 6종 정보와 그림
 js/emotes.js            감정 표현 휠과 말풍선
 js/input.js             키보드, 마우스, 터치
 js/audio.js             효과음, 배경음 (Web Audio로 직접 합성)
-js/ui.js                글자, 버튼 등 화면 도구
+js/ui.js                글자, 둥근 카드와 버튼, 배경 등 화면 도구
 js/rng.js               시드 난수
 js/scenes/menu.js       타이틀, 캐릭터 선택, 연습 목록
 js/scenes/lobby.js      온라인 메뉴, 대기실
 js/scenes/match.js      룰렛, 규칙 안내, 진행, 결과, 순위, 시상대
 js/minigames/index.js   미니게임 목록 (새 미니게임은 여기에 추가)
-js/minigames/common.js  미니게임 공용 도구 (4분할 화면, 별, 코인 그리기 등)
+js/minigames/common.js  미니게임 공용 도구 (4분할 화면, 파스텔 카드, 점수칩, 별, 코인 등)
 js/minigames/*.js       미니게임 1개 = 파일 1개
 ```
 

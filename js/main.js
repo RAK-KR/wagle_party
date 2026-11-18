@@ -147,7 +147,7 @@ function frame(now) {
     if (game.scene !== sceneBefore) { inp.pP = false; inp.aP = false; }
     // draw
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#0e0c13'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#cbbdf2'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     game.anchors = [null, null, null, null];
@@ -172,4 +172,6 @@ function frame(now) {
 
 game.go('title');
 requestAnimationFrame(frame);
+// make sure the round font is ready for canvas text
+try { document.fonts.load("40px 'Jua'"); document.fonts.load("40px 'Jua'", '가나다'); } catch (e) { }
 window.__wagle = game;

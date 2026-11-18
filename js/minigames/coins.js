@@ -1,5 +1,5 @@
 // 코인 줍기 — coins rain down; grab the most. Bombs stun you and scatter your coins.
-import { W, H, COL, text, coin, byDiff, clamp, shade } from './common.js';
+import { W, H, COL, text, coin, byDiff, clamp, shade, softBg, chip, INK, rr } from './common.js';
 
 const AX0 = 80, AY0 = 80, AX1 = 1200, AY1 = 690, LIMIT = 32, SPEED = 290, FALL = 0.9, PICK = 36;
 
@@ -96,13 +96,15 @@ export default {
   },
 
   render(ctx, st, game) {
-    ctx.fillStyle = '#2a1f3d'; ctx.fillRect(0, 0, W, H);
+    softBg(ctx, '#e9dcff', '#ffe9d4');
     // plaza floor
-    ctx.fillStyle = '#e9c98f'; ctx.fillRect(AX0, AY0, AX1 - AX0, AY1 - AY0);
+    ctx.save(); ctx.fillStyle = 'rgba(70,50,140,0.18)'; rr(ctx, AX0 - 6, AY0, AX1 - AX0 + 12, AY1 - AY0 + 12, 26); ctx.fill(); ctx.restore();
+    ctx.save(); rr(ctx, AX0 - 6, AY0 - 6, AX1 - AX0 + 12, AY1 - AY0 + 12, 26); ctx.clip();
+    ctx.fillStyle = '#f6e2bd'; ctx.fillRect(AX0 - 6, AY0 - 6, AX1 - AX0 + 12, AY1 - AY0 + 12);
     for (let x = AX0; x < AX1; x += 70) for (let y = AY0; y < AY1; y += 70) {
-      if (((x - AX0) / 70 + (y - AY0) / 70) % 2 === 0) { ctx.fillStyle = '#e2bf82'; ctx.fillRect(x, y, 70, 70); }
+      if (((x - AX0) / 70 + (y - AY0) / 70) % 2 === 0) { ctx.fillStyle = '#f1d6a6'; ctx.fillRect(x, y, 70, 70); }
     }
-    ctx.strokeStyle = '#b8935a'; ctx.lineWidth = 10; ctx.strokeRect(AX0 - 5, AY0 - 5, AX1 - AX0 + 10, AY1 - AY0 + 10);
+    ctx.restore(); ctx.strokeStyle = INK; ctx.lineWidth = 4; rr(ctx, AX0 - 6, AY0 - 6, AX1 - AX0 + 12, AY1 - AY0 + 12, 26); ctx.stroke();
     // shadows of falling things
     for (const it of st.items) {
       if (it.landed) continue;
@@ -122,7 +124,7 @@ export default {
       const expr = p.stun > 0 || p.hitFlash > 0 ? 'lose' : p.gain > 0 ? 'win' : 'idle';
       game.drawPlayer(ctx, p.i, p.x, p.y, 72, { facing: p.facing, tag: true, expr, ring: true });
       if (p.stun > 0) for (let k = 0; k < 3; k++) { const a = st.t * 6 + k * 2.1; text(ctx, '★', p.x + Math.cos(a) * 26, p.y - 82 + Math.sin(a) * 8, { size: 16, weight: 900, align: 'center', color: '#ffcf3a' }); }
-      text(ctx, String(p.coins), p.x, p.y + 22, { size: 18, weight: 900, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 5 });
+      text(ctx, String(p.coins), p.x, p.y + 22, { size: 19, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 5 });
     }
     // falling objects above
     for (const it of st.items) if (!it.landed) {
@@ -139,10 +141,7 @@ export default {
     // scoreboard strip
     for (let i = 0; i < 4; i++) {
       const p = game.players[i], x = 360 + i * 150;
-      ctx.fillStyle = 'rgba(14,12,19,0.7)'; ctx.fillRect(x, 50, 140, 26);
-      ctx.fillStyle = p.color; ctx.fillRect(x, 50, 5, 26);
-      text(ctx, p.name, x + 14, 68, { size: 14, weight: 900, color: p.color });
-      text(ctx, String(st.pl[i].coins), x + 130, 69, { size: 17, weight: 900, align: 'right' });
+      chip(ctx, game, i, x, 50, 140, 28, st.pl[i].coins);
     }
   },
 };

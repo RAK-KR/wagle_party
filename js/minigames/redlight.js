@@ -1,5 +1,5 @@
 // 술래 몰래 — run while the watcher chants with their back turned; freeze before they look. Moving while watched sends you back.
-import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, raceScores, scard, INK, rr } from './common.js';
 
 const LANES = [318, 412, 506, 600], START = 110, GOAL = 1040, RUN = 112, LIMIT = 55, TURN = 0.45, GRACE = 0.1;
 const CHANT = ['무', '궁', '화', '꽃', '이', '피', '었', '습', '니', '다'];
@@ -67,25 +67,24 @@ export default {
 
   render(ctx, st, game) {
     // sky + schoolyard
-    const g = ctx.createLinearGradient(0, 0, 0, 280); g.addColorStop(0, '#8ccfff'); g.addColorStop(1, '#dff1ff');
+    const g = ctx.createLinearGradient(0, 0, 0, 280); g.addColorStop(0, '#bfe3ff'); g.addColorStop(1, '#eef7ff');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, 280);
-    ctx.fillStyle = '#c9a26a'; ctx.fillRect(0, 260, W, H - 260);
-    ctx.fillStyle = '#7ec26a'; ctx.fillRect(0, 248, W, 18);
+    ctx.fillStyle = '#efd8b0'; ctx.fillRect(0, 260, W, H - 260);
+    ctx.fillStyle = '#b5e3a3'; ctx.fillRect(0, 248, W, 18);
     // trees
-    for (let k = 0; k < 9; k++) { const x = 60 + k * 150; ctx.fillStyle = '#6b4f3a'; ctx.fillRect(x - 5, 190, 10, 60); ctx.fillStyle = k % 2 ? '#4f9a46' : '#5cab51'; ctx.beginPath(); ctx.arc(x, 180, 34, 0, Math.PI * 2); ctx.fill(); }
+    for (let k = 0; k < 9; k++) { const x = 60 + k * 150; ctx.fillStyle = '#c49a7a'; rr(ctx, x - 5, 190, 10, 60, 4); ctx.fill(); ctx.fillStyle = k % 2 ? '#8fd18a' : '#a6dd9c'; ctx.beginPath(); ctx.arc(x, 180, 34, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke(); }
     // lanes + lines
     for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'; ctx.fillRect(0, LANES[k] - 70, W, 94); }
     ctx.fillStyle = '#fff'; ctx.fillRect(START - 4, 250, 6, H - 250);
-    for (let y = 250; y < H; y += 24) { ctx.fillStyle = (y / 24) % 2 ? '#1b1824' : '#fff'; ctx.fillRect(GOAL + 30, y, 14, 24); ctx.fillStyle = (y / 24) % 2 ? '#fff' : '#1b1824'; ctx.fillRect(GOAL + 44, y, 14, 24); }
+    for (let y = 250; y < H; y += 24) { ctx.fillStyle = (y / 24) % 2 ? INK : '#fff'; ctx.fillRect(GOAL + 30, y, 14, 24); ctx.fillStyle = (y / 24) % 2 ? '#fff' : INK; ctx.fillRect(GOAL + 44, y, 14, 24); }
     // watcher
     drawWatcher(ctx, st);
     // chant bubble
     const n = st.phase === 'away' ? Math.floor(st.pt / st.dur * CHANT.length) : CHANT.length;
     const chant = CHANT.slice(0, n);
     const words = [chant.slice(0, 3).join(''), chant.slice(3, 5).join(''), chant.slice(5).join('')].filter(Boolean).join(' ');
-    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fillRect(380, 66, 520, 70);
-    ctx.fillStyle = st.phase === 'away' ? '#6ee08a' : '#ff5d6c'; ctx.fillRect(380, 66, 8, 70);
-    text(ctx, st.phase === 'away' ? (words || '...') : st.phase === 'turn' ? words + '!' : '멈춰!', 640, 113, { size: 36, title: true, align: 'center', color: st.phase === 'away' ? '#2a2433' : '#d8323f' });
+    scard(ctx, 380, 62, 520, 74, { r: 37, fill: st.phase === 'away' ? '#f3fff6' : '#fff0f2' });
+    text(ctx, st.phase === 'away' ? (words || '...') : st.phase === 'turn' ? words + '!' : '멈춰!', 640, 113, { size: 36, title: true, align: 'center', color: st.phase === 'away' ? INK : '#e0475a' });
     // runners
     for (const p of st.pl) {
       const y = LANES[p.i], moving = p.v > 18;
@@ -95,10 +94,10 @@ export default {
       if (p.caught > 0 && Math.sin(st.t * 30) > 0) ctx.globalAlpha = 0.5;
       game.drawPlayer(ctx, p.i, p.x, y - bob, 76, { tag: true, expr, rot: moving ? 0.12 : 0 });
       ctx.restore();
-      text(ctx, game.players[p.i].name, 30, y - 20, { size: 15, weight: 900, color: game.players[p.i].color });
-      if (p.finishT != null) text(ctx, `${p.place}등`, p.x, y - 92, { size: 24, weight: 900, align: 'center', color: COL.accent, stroke: '#1b1824', strokeW: 5 });
+      text(ctx, game.players[p.i].name, 30, y - 20, { size: 16, title: true, color: '#fff', stroke: INK, strokeW: 4 });
+      if (p.finishT != null) text(ctx, `${p.place}등`, p.x, y - 92, { size: 26, title: true, align: 'center', color: COL.accent, stroke: INK, strokeW: 6 });
     }
-    for (const f of st.caughtFx) { const p = st.pl[f.i]; text(ctx, '걸렸다!', p.x, LANES[f.i] - 96 - f.t * 30, { size: 24, weight: 900, align: 'center', color: '#ff5d6c', stroke: '#fff', strokeW: 5, alpha: 1 - f.t }); }
+    for (const f of st.caughtFx) { const p = st.pl[f.i]; text(ctx, '걸렸다!', p.x, LANES[f.i] - 96 - f.t * 30, { size: 26, title: true, align: 'center', color: '#ff5d6c', stroke: INK, strokeW: 6, alpha: 1 - f.t }); }
   },
 };
 

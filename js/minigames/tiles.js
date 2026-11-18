@@ -122,12 +122,12 @@ export default {
   render(ctx, st, game) {
     // sky + void
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#3a2a5c'); g.addColorStop(0.6, '#1f1735'); g.addColorStop(1, '#0d0a16');
+    g.addColorStop(0, '#ece4ff'); g.addColorStop(0.6, '#cbbcf5'); g.addColorStop(1, '#a796e0');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // distant lights
     for (let k = 0; k < 40; k++) {
       const x = (k * 137.5) % W, y = 70 + ((k * 61) % 90), a = 0.25 + 0.25 * Math.sin(game.t * 2 + k);
-      ctx.fillStyle = `rgba(255,${180 + (k % 3) * 25},120,${a})`; ctx.fillRect(x, y, 3, 3);
+      ctx.fillStyle = `rgba(255,255,255,${a + 0.3})`; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
     }
     const players = st.players.slice().sort((a, b) => a.y - b.y);
     // falling players behind everything first
@@ -139,7 +139,7 @@ export default {
       for (const p of alive) {
         if (Math.floor(p.y) !== r && !(r === 0 && p.y < 0) && !(r === ROWS - 1 && p.y >= ROWS)) continue;
         const X = sx(p.x), Y = sy(p.y);
-        ctx.fillStyle = 'rgba(10,6,20,0.3)'; ctx.beginPath(); ctx.ellipse(X, Y, 26 - p.z * 4, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(67,56,110,0.25)'; ctx.beginPath(); ctx.ellipse(X, Y, 26 - p.z * 4, 8, 0, 0, Math.PI * 2); ctx.fill();
         game.drawPlayer(ctx, p.i, X, Y - p.z * TH * 0.9, 74, { facing: p.facing, tag: true, noShadow: true });
       }
     }

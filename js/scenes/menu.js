@@ -1,7 +1,7 @@
 // Title, character select, practice list
-import { W, H, COL, TITLE, TITLE_KO, ROUND_OPTIONS, DIFFS, FONT } from '../config.js';
+import { W, H, COL, TITLE, TITLE_KO, ROUND_OPTIONS, DIFFS, FONT, VERSION } from '../config.js';
 import { ROSTER, drawCharacter, shade } from '../characters.js';
-import { text, button, bgFill, stripes, inRect, easeOutBack } from '../ui.js';
+import { text, button, bgFill, stripes, inRect, easeOutBack, card, measure } from '../ui.js';
 import { sfx, playMusic } from '../audio.js';
 import { setTouchLayout } from '../input.js';
 import { MINIGAMES } from '../minigames/index.js';
@@ -37,15 +37,28 @@ export function titleScene(game) {
     },
     render(ctx, inp) {
       const t = game.t - t0;
-      bgFill(ctx, W, H, '#2a2238', '#141019'); stripes(ctx, W, H, game.t);
+      bgFill(ctx, W, H); stripes(ctx, W, H, game.t);
       // logo
       const k = Math.min(1, t / 0.6), s = easeOutBack(k);
-      ctx.save(); ctx.translate(W / 2, 150); ctx.scale(s, s); ctx.rotate(-0.03);
-      text(ctx, TITLE_KO, 0, 0, { size: 104, title: true, align: 'center', base: 'middle', color: '#ffcf3a', stroke: '#1b1824', strokeW: 16, shadow: '#e8473f', shadowY: 8 });
-      text(ctx, TITLE, 0, 74, { size: 30, weight: 900, align: 'center', base: 'middle', color: COL.text, stroke: '#1b1824', strokeW: 8 });
+      ctx.save(); ctx.translate(W / 2, 140); ctx.scale(s, s);
+      const letters = [...TITLE_KO], LC = ['#ffd23f', '#ff8fb1', '#7ee0ff', '#ffd23f', '#9ef08a', '#ff8fb1', '#7ee0ff'];
+      const widths = letters.map(ch => ch === ' ' ? 34 : measure(ctx, ch, 112, 400, true));
+      let lx = -widths.reduce((a, b) => a + b, 0) / 2;
+      letters.forEach((ch, k) => {
+        const w = widths[k]; if (ch === ' ') { lx += w; return; }
+        const hop = Math.abs(Math.sin(game.t * 2.6 - k * 0.45)) * 12, rot = Math.sin(game.t * 2.6 - k * 0.45) * 0.06;
+        ctx.save(); ctx.translate(lx + w / 2, -hop); ctx.rotate(rot);
+        text(ctx, ch, 0, 8, { size: 112, title: true, align: 'center', base: 'middle', color: 'rgba(67,56,110,0.22)' });
+        text(ctx, ch, 0, 0, { size: 112, title: true, align: 'center', base: 'middle', color: LC[k % LC.length], stroke: COL.ink, strokeW: 14 });
+        ctx.restore(); lx += w;
+      });
+      text(ctx, TITLE, 0, 84, { size: 30, title: true, align: 'center', base: 'middle', color: '#fff', stroke: COL.ink, strokeW: 8 });
       ctx.restore();
       // stage + characters (first four can emote)
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 548, W, 172);
+      // round grassy hill the characters stand on
+      ctx.fillStyle = '#9edcb4'; ctx.beginPath(); ctx.ellipse(W / 2, 760, 900, 230, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#bdeccd'; ctx.beginPath(); ctx.ellipse(W / 2, 770, 860, 210, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = COL.ink; ctx.beginPath(); ctx.ellipse(W / 2, 760, 900, 230, 0, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke();
       const xs = [150, 310, 470, 810, 970, 1130];
       ROSTER.forEach((r, i) => {
         const bounce = Math.abs(Math.sin(game.t * 2.2 + i * 0.9)) * 10;
@@ -56,9 +69,10 @@ export function titleScene(game) {
       items.forEach((it, i) => {
         const r = { x: W / 2 - 170, y: 270 + i * 82, w: 340, h: 68 };
         if (button(ctx, inp, r, it.label, { primary: i === 0, focus: focus === i, disabled: it.disabled, size: 26, sub: null })) { sfx.click(); it.go?.(); }
-        text(ctx, it.sub, r.x + r.w + 16, r.y + r.h / 2 + 6, { size: 15, weight: 600, color: COL.dim });
+        text(ctx, it.sub, r.x + r.w + 18, r.y + r.h / 2 + 6, { size: 17, title: true, color: '#fff', stroke: COL.ink, strokeW: 5 });
       });
-      text(ctx, '방향키/마우스로 고르기 · Space 결정 · G 감정 표현 · M 소리', W / 2, H - 22, { size: 15, weight: 600, align: 'center', color: COL.dim });
+      text(ctx, '방향키/마우스로 고르기 · Space 결정 · G 감정 표현 · M 소리', W / 2, H - 22, { size: 16, title: true, align: 'center', color: '#fff', stroke: COL.ink, strokeW: 5 });
+      text(ctx, 'v' + VERSION, W - 16, H - 14, { size: 14, weight: 800, align: 'right', color: COL.soft });
     },
   };
 }
@@ -94,39 +108,38 @@ export function selectScene(game) {
       if (game.auto && game.t - t0 > 0.4) start();
     },
     render(ctx, inp) {
-      bgFill(ctx, W, H, '#241e30', '#141019'); stripes(ctx, W, H, game.t);
-      text(ctx, mode === 'practice' ? '연습할 캐릭터 고르기' : '캐릭터 선택', 60, 74, { size: 44, title: true });
-      text(ctx, '← → 로 바꾸고 Space로 시작 · 모든 캐릭터는 능력치가 같습니다', 60, 108, { size: 16, weight: 600, color: COL.dim });
+      bgFill(ctx, W, H); stripes(ctx, W, H, game.t);
+      text(ctx, mode === 'practice' ? '연습할 캐릭터 고르기' : '캐릭터 선택', 60, 74, { size: 48, title: true, stroke: COL.ink, strokeW: 9 });
+      text(ctx, '← → 로 바꾸고 Space로 시작 · 모든 캐릭터는 능력치가 같습니다', 60, 110, { size: 18, title: true, color: '#fff', stroke: COL.ink, strokeW: 5 });
       const cw = 182, gap = 14, x0 = (W - (cw * 6 + gap * 5)) / 2;
       ROSTER.forEach((r, i) => {
         const x = x0 + i * (cw + gap), y = 140, sel = i === idx;
         const rect = { x, y, w: cw, h: 250 };
         if (inp.pP && inRect(rect, inp.px, inp.py)) { if (idx !== i) { idx = i; chosenT = game.t; sfx.click(); } }
-        ctx.fillStyle = sel ? shade(r.color, -0.55) : COL.panel; ctx.fillRect(x, y, cw, 250);
-        if (sel) { ctx.strokeStyle = r.color; ctx.lineWidth = 4; ctx.strokeRect(x + 2, y + 2, cw - 4, 246); }
+        card(ctx, { x, y: y - (sel ? 6 : 0), w: cw, h: 250 }, { fill: sel ? r.color : COL.panel, stroke: COL.ink, lw: sel ? 5 : 3.5, r: 26 });
         const hop = sel ? Math.abs(Math.sin((game.t - chosenT) * 7)) * (game.t - chosenT < 0.8 ? 14 : 0) : 0;
-        drawCharacter(ctx, r.id, x + cw / 2, y + 190 - hop, sel ? 128 : 110, { t: game.t + i, expr: sel && game.t - chosenT < 1.2 && chosenT > 0 ? 'win' : 'idle' });
-        text(ctx, r.name, x + cw / 2, y + 232, { size: 24, weight: 900, align: 'center', color: sel ? r.color : COL.text });
+        drawCharacter(ctx, r.id, x + cw / 2, y + 190 - hop - (sel ? 6 : 0), sel ? 128 : 110, { t: game.t + i, expr: sel && game.t - chosenT < 1.2 && chosenT > 0 ? 'win' : 'idle' });
+        text(ctx, r.name, x + cw / 2, y + 232 - (sel ? 6 : 0), { size: 28, title: true, align: 'center', color: '#fff', stroke: COL.ink, strokeW: 6 });
       });
       // info
       const r = ROSTER[idx];
-      ctx.fillStyle = COL.panel; ctx.fillRect(x0, 410, 640, 190); ctx.fillStyle = r.color; ctx.fillRect(x0, 410, 6, 190);
-      text(ctx, r.name, x0 + 30, 462, { size: 40, title: true, color: r.color });
-      text(ctx, r.en + '  ·  ' + r.role, x0 + 34 + 40 * r.name.length, 458, { size: 18, weight: 800, color: COL.sub });
-      text(ctx, '“' + r.line + '”', x0 + 30, 506, { size: 22, weight: 700 });
-      text(ctx, r.desc, x0 + 30, 548, { size: 17, weight: 500, color: COL.sub });
+      card(ctx, { x: x0, y: 410, w: 640, h: 190 }, { r: 28 });
+      text(ctx, r.name, x0 + 30, 464, { size: 44, title: true, color: r.color, stroke: COL.ink, strokeW: 8 });
+      text(ctx, r.en + '  ·  ' + r.role, x0 + 44 + measure(ctx, r.name, 44, 400, true), 460, { size: 20, title: true, color: COL.soft });
+      text(ctx, '“' + r.line + '”', x0 + 30, 506, { size: 22, weight: 700, color: COL.ink });
+      text(ctx, r.desc, x0 + 30, 548, { size: 17, weight: 500, color: COL.soft });
       // options
       const ox = x0 + 670;
       if (mode === 'match') {
-        text(ctx, '판 수', ox, 438, { size: 18, weight: 800, color: COL.sub });
+        text(ctx, '판 수', ox, 438, { size: 20, title: true, stroke: COL.ink, strokeW: 5 });
         ROUND_OPTIONS.forEach((n, i) => {
           if (button(ctx, inp, { x: ox + i * 112, y: 450, w: 104, h: 46 }, n + '판', { selected: roundsI === i, size: 20 })) { roundsI = i; sfx.click(); }
         });
       } else {
-        text(ctx, '연습 모드', ox, 438, { size: 18, weight: 800, color: COL.sub });
-        text(ctx, '다음 화면에서 미니게임을 고릅니다', ox, 480, { size: 17, weight: 600, color: COL.dim });
+        text(ctx, '연습 모드', ox, 438, { size: 20, title: true, stroke: COL.ink, strokeW: 5 });
+        text(ctx, '다음 화면에서 미니게임을 고릅니다', ox, 480, { size: 18, title: true, stroke: COL.ink, strokeW: 5 });
       }
-      text(ctx, '봇 난이도', ox, 530, { size: 18, weight: 800, color: COL.sub });
+      text(ctx, '봇 난이도', ox, 530, { size: 20, title: true, stroke: COL.ink, strokeW: 5 });
       DIFFS.forEach((d, i) => {
         if (button(ctx, inp, { x: ox + i * 112, y: 542, w: 104, h: 46 }, d.name, { selected: diffI === i, size: 20 })) { diffI = i; sfx.click(); }
       });
@@ -153,27 +166,27 @@ export function practiceScene(game) {
       if (inp.escP) game.go('title');
     },
     render(ctx, inp) {
-      bgFill(ctx, W, H, '#241e30', '#141019'); stripes(ctx, W, H, game.t);
-      text(ctx, '미니게임 연습', X0, 62, { size: 40, title: true });
-      text(ctx, `${MINIGAMES.length}개 중 하나를 골라 봇 3명과 한 판만 합니다. 점수는 기록되지 않습니다.`, X0, 96, { size: 16, weight: 600, color: COL.dim });
+      bgFill(ctx, W, H); stripes(ctx, W, H, game.t);
+      text(ctx, '미니게임 연습', X0, 64, { size: 46, title: true, stroke: COL.ink, strokeW: 9 });
+      text(ctx, `${MINIGAMES.length}개 중 하나를 골라 봇 3명과 한 판만 합니다. 점수는 기록되지 않습니다.`, X0, 98, { size: 17, title: true, stroke: COL.ink, strokeW: 5 });
       MINIGAMES.forEach((mg, i) => {
         const r = rectOf(i);
         if (!inp.touch && inRect(r, inp.px, inp.py)) focus = i;
         const f = focus === i;
-        ctx.fillStyle = f ? COL.line : COL.panel; ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.fillStyle = mg.color; ctx.fillRect(r.x, r.y, 5, r.h);
-        if (f) { ctx.strokeStyle = mg.color; ctx.lineWidth = 3; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
-        text(ctx, mg.typeLabel, r.x + 18, r.y + 30, { size: 13, weight: 800, color: mg.color });
-        text(ctx, mg.name, r.x + 18, r.y + 72, { size: mg.name.length > 8 ? 21 : 25, title: true });
+        const lift = f ? 4 : 0;
+        card(ctx, { x: r.x, y: r.y - lift, w: r.w, h: r.h }, { fill: f ? mg.color : COL.panel, lw: f ? 5 : 3.5, r: 24 });
+        const tw = measure(ctx, mg.typeLabel, 14, 400, true) + 20;
+        card(ctx, { x: r.x + 14, y: r.y - lift + 14, w: tw, h: 26 }, { fill: f ? '#fff' : mg.color, shadow: 0, lw: 2.5, r: 13, gloss: false });
+        text(ctx, mg.typeLabel, r.x + 24, r.y - lift + 32, { size: 14, title: true, color: COL.ink });
+        text(ctx, mg.name, r.x + 18, r.y - lift + 82, { size: mg.name.length > 8 ? 23 : 28, title: true, stroke: COL.ink, strokeW: 6 });
         if (inp.pP && inRect(r, inp.px, inp.py)) start(mg);
       });
       // rule of the focused game
       const mg = MINIGAMES[focus];
       const by = Y0 + 4 * (CH + GAP) + 6;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X0, by, C * CW + (C - 1) * GAP, 64);
-      ctx.fillStyle = mg.color; ctx.fillRect(X0, by, 5, 64);
-      text(ctx, mg.name, X0 + 20, by + 26, { size: 18, weight: 900, color: mg.color });
-      text(ctx, mg.rule, X0 + 20, by + 52, { size: 15, weight: 600, color: COL.sub });
+      card(ctx, { x: X0, y: by, w: C * CW + (C - 1) * GAP, h: 66 }, { r: 22 });
+      text(ctx, mg.name, X0 + 22, by + 28, { size: 20, title: true, color: mg.color, stroke: COL.ink, strokeW: 5 });
+      text(ctx, mg.rule, X0 + 22, by + 54, { size: 15, weight: 700, color: COL.soft });
       if (button(ctx, inp, { x: W - X0 - 150, y: 34, w: 150, h: 48 }, '뒤로', { size: 20 })) { sfx.click(); game.go('title'); }
     },
   };

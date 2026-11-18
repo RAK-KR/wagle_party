@@ -125,25 +125,25 @@ export function createEmotes(game) {
     const t = game.t, col = (game.players[game.local] || { color: '#ffcf3a' }).color;
     const k = Math.min(1, (t - wheel.openT) / 0.12);
     ctx.save();
-    ctx.fillStyle = `rgba(10,8,16,${0.45 * k})`; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = `rgba(60,45,120,${0.3 * k})`; ctx.fillRect(0, 0, W, H);
     ctx.translate(CX, CY); ctx.scale(0.85 + 0.15 * k, 0.85 + 0.15 * k);
     for (let i = 0; i < 6; i++) {
       const a0 = -Math.PI / 2 - Math.PI / 6 + i * Math.PI / 3, a1 = a0 + Math.PI / 3;
       const sel = i === wheel.sel, grow = sel ? 12 : 0;
       ctx.beginPath(); ctx.arc(0, 0, R2 + grow, a0 + 0.02, a1 - 0.02); ctx.arc(0, 0, R1, a1 - 0.02, a0 + 0.02, true); ctx.closePath();
-      ctx.fillStyle = sel ? col : 'rgba(38,34,47,0.94)'; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.stroke();
+      ctx.fillStyle = sel ? col : 'rgba(251,248,255,0.97)'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = COL.ink; ctx.stroke();
       const am = (a0 + a1) / 2, rm = (R1 + R2) / 2 + grow / 2;
       const ix = Math.cos(am) * rm, iy = Math.sin(am) * rm;
       ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.beginPath(); ctx.arc(ix, iy - 8, 25, 0, Math.PI * 2); ctx.fill();
       drawEmoteIcon(ctx, EMOTES[i].k, ix, iy - 8, sel ? 1.45 : 1.25, t);
       ctx.font = `800 14px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = sel ? '#1b1824' : COL.sub; ctx.fillText(EMOTES[i].name, ix, iy + 30);
+      ctx.fillStyle = COL.ink; ctx.fillText(EMOTES[i].name, ix, iy + 30);
     }
-    ctx.beginPath(); ctx.arc(0, 0, R1 - 6, 0, Math.PI * 2); ctx.fillStyle = 'rgba(27,24,36,0.96)'; ctx.fill();
-    ctx.font = `800 15px ${FONT}`; ctx.fillStyle = COL.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.beginPath(); ctx.arc(0, 0, R1 - 6, 0, Math.PI * 2); ctx.fillStyle = '#fbf8ff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = COL.ink; ctx.stroke();
+    ctx.font = `800 15px ${FONT}`; ctx.fillStyle = COL.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('감정 표현', 0, -8);
-    ctx.font = `600 11px ${FONT}`; ctx.fillStyle = COL.dim;
+    ctx.font = `600 11px ${FONT}`; ctx.fillStyle = COL.soft;
     ctx.fillText(wheel.mode === 'hold' ? '방향 고르고 떼기' : '클릭해서 고르기', 0, 12);
     ctx.restore();
   }

@@ -1,5 +1,5 @@
 // 탑 쌓기 — a block slides back and forth; drop it on the tower. Overhang gets cut off. Highest tower wins.
-import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, QW, QH } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, quad, inPanel, panelHeader, panelFrame, QW, QH, softBg, INK } from './common.js';
 
 const BH = 24, BASEW = 230, LIMIT = 45, BASEY = 292;
 
@@ -64,17 +64,17 @@ export default {
   },
 
   render(ctx, st, game) {
-    ctx.fillStyle = '#1b1824'; ctx.fillRect(0, 0, W, H);
+    softBg(ctx);
     for (let i = 0; i < 4; i++) {
       const p = st.pl[i], pl = game.players[i], h = p.blocks.length;
       inPanel(ctx, i, () => {
         const sky = clamp(p.cam / 900, 0, 1);
         const g = ctx.createLinearGradient(0, 0, 0, QH);
-        g.addColorStop(0, sky > 0.5 ? '#1a1840' : '#7ec8ff'); g.addColorStop(1, sky > 0.5 ? '#4a3a7a' : '#ffe2c4');
+        g.addColorStop(0, sky > 0.5 ? '#9a8fe0' : '#b8e0ff'); g.addColorStop(1, sky > 0.5 ? '#d6c9ff' : '#fff0dc');
         ctx.fillStyle = g; ctx.fillRect(0, 0, QW, QH);
         if (sky > 0.5) for (let k = 0; k < 30; k++) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect((k * 97) % QW, (k * 53) % QH, 2, 2); }
         const yOf = (k) => BASEY - k * BH + p.cam;
-        ctx.fillStyle = '#6fbf5a'; ctx.fillRect(0, yOf(0) + BH, QW, 200);
+        ctx.fillStyle = '#b5e3a3'; ctx.fillRect(0, yOf(0) + BH, QW, 200);
         p.blocks.forEach((bk, k) => {
           const y = yOf(k); if (y < -30 || y > QH + 30) return;
           const c = k === 0 ? '#7a6a5a' : shade(pl.color, -0.25 + (k % 5) * 0.08);
@@ -94,9 +94,9 @@ export default {
         // character on top of tower
         const cy = yOf(h - 1);
         game.drawPlayer(ctx, i, topB.x + (p.failed ? 0 : 0), cy, 44, { tag: true, expr: p.failed ? 'lose' : p.perfect > 0 ? 'win' : 'idle', noShadow: false });
-        if (p.perfect > 0) text(ctx, '딱!', topB.x + topB.w / 2 + 20, cy - 10, { size: 22, weight: 900, color: COL.accent, stroke: '#1b1824', strokeW: 5 });
+        if (p.perfect > 0) text(ctx, '딱!', topB.x + topB.w / 2 + 20, cy - 10, { size: 24, title: true, color: COL.accent, stroke: INK, strokeW: 5 });
         panelHeader(ctx, game, i, `${h - 1}층`);
-        if (p.failed) text(ctx, '끝!', QW / 2, 150, { size: 34, title: true, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 6 });
+        if (p.failed) text(ctx, '끝!', QW / 2, 150, { size: 38, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 8 });
       });
       panelFrame(ctx, game, i);
     }

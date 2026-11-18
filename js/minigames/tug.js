@@ -1,5 +1,5 @@
 // 줄다리기 (2:2) — press on the beat to pull hard. Mashing only gives weak pulls. Drag the flag over your line.
-import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, scard, INK, pastel } from './common.js';
 
 const BEAT = 0.5, WIN = 230, LIMIT = 28, ROPE_Y = 452, CX = W / 2;
 const TEAM_COL = ['#ff8a4c', '#4cb2ff'];
@@ -62,11 +62,11 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8ccfff'); g.addColorStop(0.55, '#d8efff'); g.addColorStop(0.56, '#7ec26a'); g.addColorStop(1, '#5aa64e');
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#bfe3ff'); g.addColorStop(0.55, '#eef7ff'); g.addColorStop(0.56, '#b5e3a3'); g.addColorStop(1, '#9fd68e');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // mud pit + win lines
-    ctx.fillStyle = '#7a5226'; ctx.beginPath(); ctx.ellipse(CX, ROPE_Y + 70, 120, 28, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#5a3a14'; ctx.beginPath(); ctx.ellipse(CX, ROPE_Y + 72, 90, 18, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c99c7a'; ctx.beginPath(); ctx.ellipse(CX, ROPE_Y + 70, 120, 28, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#9e7457'; ctx.beginPath(); ctx.ellipse(CX, ROPE_Y + 72, 90, 18, 0, 0, Math.PI * 2); ctx.fill();
     for (const s of [-1, 1]) { ctx.fillStyle = TEAM_COL[s < 0 ? 0 : 1]; ctx.fillRect(CX + s * WIN - 3, ROPE_Y + 30, 6, 90); }
     ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(CX - 2, ROPE_Y + 40, 4, 70);
     // rope
@@ -86,23 +86,23 @@ export default {
         const lean = (p.pull > 0 ? 0.32 : 0.18) * dir * -1;
         const expr = st.winner >= 0 ? (st.winner === tm ? 'win' : st.winner === 2 ? 'idle' : 'lose') : p.pull > 0 ? 'win' : 'idle';
         game.drawPlayer(ctx, i, x, ROPE_Y + 40, 100, { tag: true, facing: -dir, rot: -lean, expr, lockExpr: st.winner >= 0 });
-        for (const f of p.fx) text(ctx, f.txt, x, ROPE_Y - 110 - f.t * 40, { size: 20, weight: 900, align: 'center', color: f.col, alpha: 1 - f.t * 2, stroke: '#1b1824', strokeW: 4 });
+        for (const f of p.fx) text(ctx, f.txt, x, ROPE_Y - 110 - f.t * 40, { size: 20, weight: 900, align: 'center', color: f.col, alpha: 1 - f.t * 2, stroke: INK, strokeW: 5, title: true });
       });
     }
     // beat ring
     const ph = (st.t / BEAT) % 1, r = 24 + (1 - ph) * 60;
-    ctx.fillStyle = 'rgba(27,24,36,0.75)'; ctx.beginPath(); ctx.arc(CX, 150, 48, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(CX, 150, 50, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.stroke();
     ctx.strokeStyle = COL.accent; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(CX, 150, 24, 0, Math.PI * 2); ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${0.4 + ph * 0.6})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(CX, 150, r, 0, Math.PI * 2); ctx.stroke();
-    text(ctx, '원이 겹칠 때 누르기', CX, 228, { size: 18, weight: 900, align: 'center', color: '#1b1824' });
+    ctx.strokeStyle = `rgba(67,56,110,${0.3 + ph * 0.6})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(CX, 150, r, 0, Math.PI * 2); ctx.stroke();
+    text(ctx, '원이 겹칠 때 누르기', CX, 228, { size: 20, title: true, align: 'center', color: INK });
     // team labels
     for (const tm of [0, 1]) {
       const x = tm === 0 ? 70 : W - 70, al = tm === 0 ? 'left' : 'right';
       const names = slots[tm].map(i => game.players[i].name).join(' · ');
-      ctx.fillStyle = TEAM_COL[tm]; ctx.fillRect(tm === 0 ? 50 : W - 370, 70, 320, 70);
-      text(ctx, tm === 0 ? '주황 팀' : '파랑 팀', x, 100, { size: 24, title: true, align: al, color: '#1b1824' });
-      text(ctx, names, x, 128, { size: 16, weight: 900, align: al, color: '#1b1824' });
+      scard(ctx, tm === 0 ? 50 : W - 370, 64, 320, 78, { r: 30, fill: pastel(TEAM_COL[tm], 0.45) });
+      text(ctx, tm === 0 ? '주황 팀' : '파랑 팀', x, 100, { size: 26, title: true, align: al, color: '#fff', stroke: INK, strokeW: 6 });
+      text(ctx, names, x, 128, { size: 17, title: true, align: al, color: INK });
     }
-    if (st.winner >= 0) text(ctx, st.winner === 2 ? '무승부!' : (st.winner === 0 ? '주황 팀' : '파랑 팀') + ' 승리!', CX, 320, { size: 54, title: true, align: 'center', color: st.winner === 2 ? '#fff' : TEAM_COL[st.winner], stroke: '#1b1824', strokeW: 10 });
+    if (st.winner >= 0) text(ctx, st.winner === 2 ? '무승부!' : (st.winner === 0 ? '주황 팀' : '파랑 팀') + ' 승리!', CX, 320, { size: 54, title: true, align: 'center', color: st.winner === 2 ? '#fff' : TEAM_COL[st.winner], stroke: INK, strokeW: 10 });
   },
 };

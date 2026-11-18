@@ -1,5 +1,5 @@
 // 왕관 차지 — hold the crown as long as you can. Touch the holder to steal it.
-import { W, H, COL, text, byDiff, clamp, crown } from './common.js';
+import { W, H, COL, text, byDiff, clamp, crown, softBg, chip, INK } from './common.js';
 
 const CX = W / 2, CY = 400, R = 330, YS = 0.62, LIMIT = 30, SPEED = 275, HOLD_SPEED = 252;
 
@@ -79,12 +79,11 @@ export default {
   },
 
   render(ctx, st, game) {
-    const g = ctx.createRadialGradient(CX, CY, 40, CX, CY, 760); g.addColorStop(0, '#3b2a1a'); g.addColorStop(1, '#120c08');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    softBg(ctx, '#ffe6d6', '#f3e2ff');
     // stage
-    ctx.fillStyle = '#5a2a1a'; ctx.beginPath(); ctx.ellipse(CX, CY + 22, R, R * YS, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#c4473a'; ctx.beginPath(); ctx.ellipse(CX, CY, R, R * YS, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#d65a4b'; ctx.beginPath(); ctx.ellipse(CX, CY, R - 30, (R - 30) * YS, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d98f86'; ctx.beginPath(); ctx.ellipse(CX, CY + 22, R, R * YS, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#f4a8a0'; ctx.beginPath(); ctx.ellipse(CX, CY, R, R * YS, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f8bcb4'; ctx.beginPath(); ctx.ellipse(CX, CY, R - 30, (R - 30) * YS, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#ffcf3a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(CX, CY, R - 14, (R - 14) * YS, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,207,58,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(CX, CY, 70, 70 * YS, 0, 0, Math.PI * 2); ctx.stroke();
     if (st.holder < 0) { const bob = Math.sin(st.t * 4) * 6; crown(ctx, CX, CY - 30 + bob, 1.6); }
@@ -101,10 +100,7 @@ export default {
     }
     for (let i = 0; i < 4; i++) {
       const p = game.players[i], x = 330 + i * 160;
-      ctx.fillStyle = st.holder === i ? 'rgba(255,207,58,0.85)' : 'rgba(14,12,19,0.7)'; ctx.fillRect(x, 54, 150, 28);
-      ctx.fillStyle = p.color; ctx.fillRect(x, 54, 5, 28);
-      text(ctx, p.name, x + 14, 73, { size: 14, weight: 900, color: st.holder === i ? '#1b1824' : p.color });
-      text(ctx, st.pl[i].held.toFixed(1) + '초', x + 140, 74, { size: 16, weight: 900, align: 'right', color: st.holder === i ? '#1b1824' : COL.text });
+      chip(ctx, game, i, x, 54, 150, 30, st.pl[i].held.toFixed(1) + '초', st.holder === i);
     }
   },
 };

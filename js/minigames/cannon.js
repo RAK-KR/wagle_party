@@ -2,6 +2,7 @@
 import { W, H, COL } from '../config.js';
 import { shade } from '../characters.js';
 import { text } from '../ui.js';
+import { softBg, INK, rr } from './common.js';
 
 const SHOTS = 3, V0 = 720, G = 620, GROUND = 250, CANX = 70;
 const AMIN = 18, AMAX = 72, APER = 1.7, PPER = 1.25, PMIN = 0.3, IDLE = 7, LIMIT = 60;
@@ -106,7 +107,7 @@ export default {
   },
 
   render(ctx, st, game) {
-    ctx.fillStyle = '#1b1824'; ctx.fillRect(0, 0, W, H);
+    softBg(ctx);
     for (const p of st.pl) drawPanel(ctx, st, p, game);
   },
 };
@@ -114,7 +115,7 @@ export default {
 function drawPanel(ctx, st, p, game) {
   const { x: ox, y: oy } = panel(p.i), pl = game.players[p.i];
   const c = st.course[Math.min(p.shot, SHOTS - 1)];
-  ctx.save(); ctx.translate(ox, oy); ctx.beginPath(); ctx.rect(0, 0, PW, PH); ctx.clip();
+  ctx.save(); ctx.translate(ox, oy); rr(ctx, 3, 3, PW - 6, PH - 6, 18); ctx.clip();
   // sky + hills
   const g = ctx.createLinearGradient(0, 0, 0, PH); g.addColorStop(0, '#a8dcff'); g.addColorStop(1, '#e8f6ff');
   ctx.fillStyle = g; ctx.fillRect(0, 0, PW, PH);
@@ -165,30 +166,31 @@ function drawPanel(ctx, st, p, game) {
     const pts = p.last ? p.last.pts : 0;
     const bounce = p.phase === 'land' ? Math.abs(Math.sin(p.pt * 8)) * Math.max(0, 1 - p.pt) * 18 : 0;
     game.drawPlayer(ctx, p.i, Math.max(30, Math.min(PW - 30, lx)), GROUND - bounce, 58, { expr: pts >= 6 ? 'win' : pts ? 'idle' : 'lose', tag: true });
-    if (p.phase === 'land' && p.last) text(ctx, pts ? `+${pts}` : '빗나감', Math.max(60, Math.min(PW - 60, lx)), GROUND - 90 - p.pt * 20, { size: 28, weight: 900, align: 'center', color: pts >= 6 ? '#2e7d32' : pts ? '#b37a00' : '#7a3a3a', stroke: '#fff', strokeW: 6 });
+    if (p.phase === 'land' && p.last) text(ctx, pts ? `+${pts}` : '빗나감', Math.max(60, Math.min(PW - 60, lx)), GROUND - 90 - p.pt * 20, { size: 30, title: true, align: 'center', color: pts >= 6 ? COL.good : pts ? COL.accent : '#ff8fa3', stroke: INK, strokeW: 6 });
   }
   // header
-  ctx.fillStyle = 'rgba(27,24,36,0.78)'; ctx.fillRect(0, 0, PW, 30);
-  ctx.fillStyle = pl.color; ctx.fillRect(0, 0, 6, 30);
-  text(ctx, pl.name, 16, 21, { size: 16, weight: 900, color: pl.color });
-  text(ctx, `${Math.min(p.shot + 1, SHOTS)} / ${SHOTS}발`, 120, 21, { size: 15, weight: 800, color: COL.sub });
-  text(ctx, `${p.total}점`, PW - 14, 22, { size: 18, weight: 900, align: 'right', color: COL.accent });
+  ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.fillRect(0, 0, PW, 34);
+  { ctx.font = `20px 'Jua', sans-serif`; const nw = Math.max(70, ctx.measureText(pl.name).width + 30);
+    ctx.fillStyle = pl.color; ctx.strokeStyle = INK; ctx.lineWidth = 3; rr(ctx, 8, 5, nw, 26, 13); ctx.fill(); ctx.stroke();
+    text(ctx, pl.name, 8 + nw / 2, 25, { size: 17, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 4 }); }
+  text(ctx, `${Math.min(p.shot + 1, SHOTS)} / ${SHOTS}발`, 132, 25, { size: 17, title: true, color: INK });
+  text(ctx, `${p.total}점`, PW - 16, 26, { size: 20, title: true, align: 'right', color: INK });
   // wind
   const wl = Math.abs(c.wind);
-  text(ctx, '바람', PW / 2 - 70, 21, { size: 14, weight: 800, color: COL.sub });
-  ctx.save(); ctx.translate(PW / 2, 15); ctx.fillStyle = wl < 5 ? COL.dim : '#8fd3ff';
+  text(ctx, '바람', PW / 2 - 70, 25, { size: 16, title: true, color: COL.soft });
+  ctx.save(); ctx.translate(PW / 2, 18); ctx.fillStyle = wl < 5 ? COL.faint : '#5aa8e8';
   const len = 10 + wl * 0.35;
   ctx.fillRect(c.wind >= 0 ? -len / 2 : -len / 2, -3, len, 6);
   ctx.beginPath(); if (c.wind >= 0) { ctx.moveTo(len / 2 + 8, 0); ctx.lineTo(len / 2 - 2, -8); ctx.lineTo(len / 2 - 2, 8); } else { ctx.moveTo(-len / 2 - 8, 0); ctx.lineTo(-len / 2 + 2, -8); ctx.lineTo(-len / 2 + 2, 8); } ctx.fill();
   ctx.restore();
-  text(ctx, wl < 5 ? '없음' : `${Math.round(wl / 10)}`, PW / 2 + 70, 21, { size: 14, weight: 800, color: COL.sub });
+  text(ctx, wl < 5 ? '없음' : `${Math.round(wl / 10)}`, PW / 2 + 70, 25, { size: 16, title: true, color: COL.soft });
   // phase hint for local
   if (p.i === game.local && !game.auto) {
     const hint = p.phase === 'angle' ? 'Space: 각도 정하기' : p.phase === 'power' ? 'Space: 힘 정하고 발사!' : '';
-    if (hint) text(ctx, hint, PW / 2, PH - 18, { size: 18, weight: 900, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 5 });
+    if (hint) text(ctx, hint, PW / 2, PH - 18, { size: 20, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 5 });
   }
-  if (p.phase === 'done') { ctx.fillStyle = 'rgba(27,24,36,0.35)'; ctx.fillRect(0, 30, PW, PH); text(ctx, '완료', PW / 2, 150, { size: 34, title: true, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 6 }); }
+  if (p.phase === 'done') { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 34, PW, PH); text(ctx, '완료', PW / 2, 150, { size: 38, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 8 }); }
   ctx.restore();
-  ctx.strokeStyle = p.i === game.local ? pl.color : 'rgba(255,255,255,0.08)'; ctx.lineWidth = p.i === game.local ? 4 : 2;
-  ctx.strokeRect(ox + 1, oy + 1, PW - 2, PH - 2);
+  ctx.strokeStyle = p.i === game.local && !game.auto ? pl.color : INK; ctx.lineWidth = p.i === game.local && !game.auto ? 5 : 4;
+  rr(ctx, ox + 3, oy + 3, PW - 6, PH - 6, 18); ctx.stroke();
 }

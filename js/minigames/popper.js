@@ -2,6 +2,7 @@
 import { W, H, COL } from '../config.js';
 import { shade } from '../characters.js';
 import { text } from '../ui.js';
+import { pcard, nameText, INK } from './common.js';
 
 const LIMIT = 30, TOPY = 60, FLOOR = 560;
 const TYPES = {
@@ -102,7 +103,7 @@ export default {
 
   render(ctx, st, game) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#8ed0ff'); g.addColorStop(0.75, '#d6efff'); g.addColorStop(1, '#ffe9c9');
+    g.addColorStop(0, '#bfe4ff'); g.addColorStop(0.75, '#e8f5ff'); g.addColorStop(1, '#fff1dc');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // clouds
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
@@ -118,19 +119,18 @@ export default {
       ctx.globalAlpha = 1 - k; ctx.lineWidth = 4;
       for (let a = 0; a < 8; a++) { const an = a * Math.PI / 4; ctx.beginPath(); ctx.moveTo(f.x + Math.cos(an) * (14 + k * 30), f.y + Math.sin(an) * (14 + k * 30)); ctx.lineTo(f.x + Math.cos(an) * (24 + k * 46), f.y + Math.sin(an) * (24 + k * 46)); ctx.stroke(); }
       ctx.globalAlpha = 1;
-      text(ctx, (f.pts > 0 ? '+' : '') + f.pts, f.x, f.y - 20 - k * 40, { size: 30, weight: 900, align: 'center', color: f.pts > 0 ? game.players[f.i].color : COL.bad, stroke: '#1b1824', strokeW: 6, alpha: 1 - k * 0.8 });
+      text(ctx, (f.pts > 0 ? '+' : '') + f.pts, f.x, f.y - 20 - k * 40, { size: 30, weight: 900, align: 'center', color: f.pts > 0 ? '#fff' : COL.bad, stroke: INK, strokeW: 6, title: true, alpha: 1 - k * 0.8 });
     }
     // booths
-    ctx.fillStyle = '#6b4f8c'; ctx.fillRect(0, FLOOR, W, H - FLOOR);
-    ctx.fillStyle = '#7d5fa0'; ctx.fillRect(0, FLOOR, W, 10);
+    ctx.fillStyle = '#d9cdfb'; ctx.fillRect(0, FLOOR, W, H - FLOOR);
+    ctx.fillStyle = INK; ctx.fillRect(0, FLOOR, W, 4);
     for (let i = 0; i < 4; i++) {
       const x = 160 + i * 320, p = game.players[i];
-      ctx.fillStyle = shade(p.color, -0.45); ctx.fillRect(x - 140, FLOOR + 20, 280, 130);
-      ctx.fillStyle = p.color; ctx.fillRect(x - 140, FLOOR + 20, 280, 6);
+      pcard(ctx, game, i, x - 140, FLOOR + 16, 280, 124, { r: 30 });
       const expr = st.react[i] > 0 ? st.reactK[i] : 'idle';
       game.drawPlayer(ctx, i, x - 70, FLOOR + 140, 92, { expr, tag: true });
-      text(ctx, String(st.score[i]), x + 60, FLOOR + 102, { size: 54, title: true, align: 'center', color: '#fff', stroke: '#1b1824', strokeW: 8 });
-      text(ctx, p.name, x + 60, FLOOR + 136, { size: 16, weight: 900, align: 'center', color: p.color });
+      text(ctx, String(st.score[i]), x + 60, FLOOR + 102, { size: 54, title: true, align: 'center', color: '#fff', stroke: INK, strokeW: 9 });
+      nameText(ctx, p.name, x + 60, FLOOR + 130, 17);
     }
     // cursors (bots + local marker)
     for (let i = 0; i < 4; i++) {
@@ -169,5 +169,5 @@ function drawCursor(ctx, x, y, col, label) {
   ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  text(ctx, label, x + 20, y - 16, { size: 13, weight: 900, color: col, stroke: '#1b1824', strokeW: 4 });
+  text(ctx, label, x + 20, y - 16, { size: 15, title: true, color: '#fff', stroke: INK, strokeW: 4 });
 }

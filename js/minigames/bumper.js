@@ -1,6 +1,7 @@
 // 범퍼카 링 아웃 — bump others off a shrinking round arena.
 import { W, H } from '../config.js';
 import { shade } from '../characters.js';
+import { INK, rr } from './common.js';
 
 const CX = W / 2, CY = 410, YS = 0.6;   // arena center, vertical squash
 const R0 = 340, RMIN = 170, LIMIT = 45, CR = 38;
@@ -112,26 +113,26 @@ export default {
 
   render(ctx, st, game) {
     const g = ctx.createRadialGradient(CX, CY, 50, CX, CY, 700);
-    g.addColorStop(0, '#1d2a3f'); g.addColorStop(1, '#090b12');
+    g.addColorStop(0, '#f2ecff'); g.addColorStop(1, '#c9dcfb');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // crowd lights ring
     for (let k = 0; k < 60; k++) {
       const a = (k / 60) * Math.PI * 2, x = CX + Math.cos(a) * 560, y = CY - 40 + Math.sin(a) * 300;
       const on = (Math.floor(game.t * 6) + k) % 4 === 0;
-      ctx.fillStyle = on ? '#ffe28a' : 'rgba(255,226,138,0.25)'; ctx.beginPath(); ctx.arc(x, y, on ? 4 : 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = on ? '#ffd76e' : 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.arc(x, y, on ? 4 : 3, 0, Math.PI * 2); ctx.fill();
     }
     const R = st.R;
     // arena side
-    ctx.fillStyle = '#121019'; ctx.beginPath(); ctx.ellipse(CX, CY + 34, R, R * YS, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(CX, CY + 34, R + 3, R * YS + 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.ellipse(CX, CY + 30, R, R * YS, 0, 0, Math.PI); ctx.lineTo(CX - R, CY); ctx.ellipse(CX, CY, R, R * YS, 0, Math.PI, 0, true); ctx.closePath(); ctx.clip();
-    for (let k = -R; k < R; k += 30) { ctx.fillStyle = (Math.floor(k / 30) % 2) ? '#ffcf3a' : '#2a2433'; ctx.beginPath(); ctx.moveTo(CX + k, CY); ctx.lineTo(CX + k + 30, CY); ctx.lineTo(CX + k + 30 - 14, CY + 60 + R * YS); ctx.lineTo(CX + k - 14, CY + 60 + R * YS); ctx.fill(); }
+    for (let k = -R; k < R; k += 30) { ctx.fillStyle = (Math.floor(k / 30) % 2) ? '#ffd76e' : '#fbf8ff'; ctx.beginPath(); ctx.moveTo(CX + k, CY); ctx.lineTo(CX + k + 30, CY); ctx.lineTo(CX + k + 30 - 14, CY + 60 + R * YS); ctx.lineTo(CX + k - 14, CY + 60 + R * YS); ctx.fill(); }
     ctx.restore();
     // floor
     const fg = ctx.createRadialGradient(CX, CY, 20, CX, CY, R);
-    fg.addColorStop(0, '#5a4a8a'); fg.addColorStop(1, '#3a2f5e');
-    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(CX, CY, R, R * YS, 0, 0, Math.PI * 2); ctx.fill();
+    fg.addColorStop(0, '#d9ccff'); fg.addColorStop(1, '#b9a8f0');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(CX, CY, R, R * YS, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
     ctx.save(); ctx.beginPath(); ctx.ellipse(CX, CY, R, R * YS, 0, 0, Math.PI * 2); ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
     for (let r = 60; r < R0; r += 60) { ctx.beginPath(); ctx.ellipse(CX, CY, r, r * YS, 0, 0, Math.PI * 2); ctx.stroke(); }
     ctx.restore();
     const warn = R < R0 && R > RMIN ? 0.5 + Math.sin(game.t * 10) * 0.5 : 0.3;
@@ -154,7 +155,7 @@ export default {
     const me = st.players[game.local];
     if (me.alive) {
       const X = CX + me.x, Y = CY + me.y * YS + 34;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(X - 30, Y, 60, 6);
+      ctx.fillStyle = 'rgba(67,56,110,0.35)'; rr(ctx, X - 30, Y, 60, 7, 3.5); ctx.fill();
       ctx.fillStyle = me.cd === 0 ? '#6ee08a' : '#ffcf3a'; ctx.fillRect(X - 30, Y, 60 * (1 - me.cd / BOOST_CD), 6);
     }
   },

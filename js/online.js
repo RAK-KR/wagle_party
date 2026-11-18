@@ -2,11 +2,10 @@
 // Other players send their inputs and draw what the host sends.
 import { createNet } from './net.js';
 import { ROSTER } from './characters.js';
-import { DIFFS, ROUND_OPTIONS, COL, W, H } from './config.js';
+import { DIFFS, ROUND_OPTIONS, COL, W, H, VERSION } from './config.js';
 import { sfx } from './audio.js';
 import { text, measure } from './ui.js';
 
-const VERSION = 1;
 const SNAP_EVERY = 0.05;
 const LERP = new Set(['x', 'y', 'z', 'ang', 'rope', 'mx', 'cam', 'pow', 'R', 'held']);
 const MONO = new Set(['t', 'pt', 'ft', 'fallT']);
@@ -121,7 +120,11 @@ export function createOnline(game) {
     if (m.t === 'ping') return;
     if (m.t === 'bye') { dropConn(conn); return; }
     if (m.t === 'hello') {
-      if (m.ver !== VERSION) { net.send(conn, { t: 'reject', reason: '게임 버전이 다릅니다. 둘 다 새로고침해 주세요.' }); return; }
+      if (m.ver !== VERSION) {
+        const who = String(m.ver) < VERSION ? '참가하는 사람' : '방장';
+        net.send(conn, { t: 'reject', reason: `버전이 다릅니다 (방장 v${VERSION}, 나 v${m.ver}). ${who} 쪽에서 새로고침(Ctrl+Shift+R, 휴대폰은 브라우저를 껐다 켜기)해 주세요.` });
+        return;
+      }
       if (o.lobby.playing) { net.send(conn, { t: 'reject', reason: '이미 게임이 진행 중입니다. 판이 끝나고 다시 들어와 주세요.' }); return; }
       s = o.lobby.seats.findIndex((x, i) => i > 0 && !x);
       if (s < 0) { net.send(conn, { t: 'reject', reason: '방이 꽉 찼습니다. (최대 4명)' }); return; }
@@ -201,7 +204,12 @@ export function createOnline(game) {
       o.name = name; o.error = ''; o.status = '방에 들어가는 중...'; o.role = 'joining'; o.code = code;
       net.join(code);
       clearTimeout(joinTimer);
-      joinTimer = setTimeout(() => { if (o.role === 'joining') fail('응답이 없습니다. 코드를 확인하거나 다시 시도해 주세요.'); }, 12000);
+      joinTimer = setTimeout(() => {
+        if (o.role !== 'joining') return;
+        fail(net.stage() === 'connecting'
+          ? '방은 찾았지만 연결이 막혔습니다. 학교·회사 와이파이에서 막힐 수 있습니다. 휴대폰 데이터나 다른 와이파이로 해 보세요.'
+          : '연결 서버에 접속하지 못했습니다. 인터넷 연결을 확인해 주세요.');
+      }, 25000);
     },
     leave() { if (o.role === 'host') bcast({ t: 'lobby', lobby: { ...o.lobby, closed: true } }); end(null); },
     pick(ch) { if (o.role === 'host') pickFor(0, ch); else net.toHost({ t: 'pick', char: ch }); },
@@ -286,10 +294,10 @@ export function createOnline(game) {
       lines.forEach((c, k) => {
         const y = H - 150 + k * 24, alpha = Math.min(1, (9 - (now - c.t)) / 1.5);
         ctx.save(); ctx.globalAlpha = alpha;
-        ctx.fillStyle = 'rgba(14,12,19,0.6)'; ctx.fillRect(12, y - 17, 420, 23);
+        ctx.fillStyle = 'rgba(251,248,255,0.88)'; ctx.beginPath(); ctx.roundRect(12, y - 18, 420, 24, 12); ctx.fill();
         ctx.restore();
-        if (c.sys) text(ctx, c.text, 20, y, { size: 14, weight: 700, color: COL.dim, alpha });
-        else { text(ctx, c.name, 20, y, { size: 14, weight: 900, color: c.color, alpha }); text(ctx, c.text, 30 + measure(ctx, c.name, 14, 900), y, { size: 14, weight: 600, color: COL.text, alpha }); }
+        if (c.sys) text(ctx, c.text, 22, y, { size: 14, weight: 700, color: COL.soft, alpha });
+        else { text(ctx, c.name, 22, y, { size: 14, weight: 900, color: c.color, alpha }); text(ctx, c.text, 32 + measure(ctx, c.name, 14, 900), y, { size: 14, weight: 600, color: COL.ink, alpha }); }
       });
     },
   });

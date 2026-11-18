@@ -1,5 +1,5 @@
 // 미니 카트 — 3 laps around a small track. Stay on the road; grass slows you down.
-import { W, H, COL, text, byDiff, clamp, shade, raceScores } from './common.js';
+import { W, H, COL, text, byDiff, clamp, shade, raceScores, chip, INK } from './common.js';
 
 const LAPS = 3, TW = 108, MAXV = 340, GRASSV = 130, LIMIT = 80, N = 520;
 const CTRL = [[250, 150], [640, 118], [1040, 150], [1185, 300], [1100, 445], [870, 470], [735, 560], [880, 650], [560, 690], [240, 655], [100, 480], [115, 285]];
@@ -107,24 +107,25 @@ export default {
 
   render(ctx, st, game) {
     // grass
-    ctx.fillStyle = '#6fbf5a'; ctx.fillRect(0, 0, W, H);
-    for (let y = 0; y < H; y += 60) { ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, y, W, 30); }
+    ctx.fillStyle = '#b5e3a3'; ctx.fillRect(0, 0, W, H);
+    for (let y = 0; y < H; y += 60) { ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(0, y, W, 30); }
     for (const [x, y, r] of [[640, 300, 34], [420, 330, 28], [860, 300, 30], [560, 400, 22], [1000, 590, 26], [330, 520, 30], [460, 560, 24], [1230, 640, 30], [40, 120, 34], [1230, 100, 30]]) {
-      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.ellipse(x + 6, y + r * 0.8, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#3f8f3a'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#58a84a'; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.55, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(60,80,60,0.12)'; ctx.beginPath(); ctx.ellipse(x + 6, y + r * 0.8, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#86cf86'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = '#a8e0a0'; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.55, 0, Math.PI * 2); ctx.fill();
     }
     // track
     const path = () => { ctx.beginPath(); TRACK.forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); };
     ctx.lineJoin = 'round';
-    path(); ctx.strokeStyle = '#e8473f'; ctx.lineWidth = TW + 18; ctx.stroke();
+    path(); ctx.strokeStyle = INK; ctx.lineWidth = TW + 26; ctx.stroke();
+    path(); ctx.strokeStyle = '#f59a9a'; ctx.lineWidth = TW + 18; ctx.stroke();
     path(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = TW + 18; ctx.setLineDash([22, 22]); ctx.stroke(); ctx.setLineDash([]);
-    path(); ctx.strokeStyle = '#4a4553'; ctx.lineWidth = TW; ctx.stroke();
+    path(); ctx.strokeStyle = '#8e88a8'; ctx.lineWidth = TW; ctx.stroke();
     path(); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3; ctx.setLineDash([20, 26]); ctx.stroke(); ctx.setLineDash([]);
     // start line
     const [tx, ty] = tangent(0), nx = -ty, ny = tx;
     for (let k = -6; k < 6; k++) for (let r = 0; r < 2; r++) {
-      ctx.fillStyle = (k + r) % 2 ? '#fff' : '#1b1824';
+      ctx.fillStyle = (k + r) % 2 ? '#fff' : INK;
       const cx = TRACK[0][0] + nx * (k + 0.5) * (TW / 12) + tx * (r - 0.5) * 9, cy = TRACK[0][1] + ny * (k + 0.5) * (TW / 12) + ty * (r - 0.5) * 9;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.atan2(ty, tx)); ctx.fillRect(-4.5, -TW / 24, 9, TW / 12); ctx.restore();
     }
@@ -144,10 +145,7 @@ export default {
     // lap boards
     for (let i = 0; i < 4; i++) {
       const p = st.pl[i], pl = game.players[i], x = 300 + i * 172;
-      ctx.fillStyle = 'rgba(14,12,19,0.75)'; ctx.fillRect(x, 54, 162, 28);
-      ctx.fillStyle = pl.color; ctx.fillRect(x, 54, 5, 28);
-      text(ctx, pl.name, x + 14, 73, { size: 14, weight: 900, color: pl.color });
-      text(ctx, p.finishT != null ? `${p.place}등 골인` : `${Math.min(LAPS, p.lap + 1)}/${LAPS}바퀴`, x + 152, 74, { size: 15, weight: 900, align: 'right', color: p.finishT != null ? COL.accent : COL.text });
+      chip(ctx, game, i, x, 54, 162, 30, p.finishT != null ? `${p.place}등 골인` : `${Math.min(LAPS, p.lap + 1)}/${LAPS}바퀴`, p.finishT != null);
     }
   },
 };
