@@ -1,5 +1,7 @@
 # 와글와글 파티 (WAGLE PARTY)
 
+https://rak-kr.github.io/wagle_party/
+
 보드판 없이 미니게임만 연달아 하는 파티 게임입니다. 4명이 겨루고, 빈자리는 봇이 채웁니다.
 
 ## 온라인 대전 (P2P)
