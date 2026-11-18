@@ -133,35 +133,44 @@ export function selectScene(game) {
 }
 
 export function practiceScene(game) {
-  let focus = 0, t0 = 0;
+  let focus = 0;
+  const C = 5, CW = 228, CH = 118, GAP = 10, X0 = (W - (C * CW + (C - 1) * GAP)) / 2, Y0 = 118;
+  const rectOf = (i) => ({ x: X0 + (i % C) * (CW + GAP), y: Y0 + Math.floor(i / C) * (CH + GAP), w: CW, h: CH });
+  const start = (mg) => { sfx.go(); game.go('matchStart', { rounds: 1, fixed: mg.id, practice: true }); };
   return {
-    enter() { t0 = game.t; setTouchLayout({ stick: false, a: false }); playMusic('menu'); },
+    enter() { setTouchLayout({ stick: false, a: false }); playMusic('menu'); },
     update(dt, inp) {
-      if (inp.leftP) focus = (focus + MINIGAMES.length - 1) % MINIGAMES.length;
-      if (inp.rightP) focus = (focus + 1) % MINIGAMES.length;
-      if (inp.upP) focus = (focus + MINIGAMES.length - 3) % MINIGAMES.length;
-      if (inp.downP) focus = (focus + 3) % MINIGAMES.length;
-      if (inp.aP) { sfx.go(); game.go('matchStart', { rounds: 1, fixed: MINIGAMES[focus].id, practice: true }); }
+      const n = MINIGAMES.length;
+      if (inp.leftP) focus = (focus + n - 1) % n;
+      if (inp.rightP) focus = (focus + 1) % n;
+      if (inp.upP) focus = (focus + n - C) % n;
+      if (inp.downP) focus = (focus + C) % n;
+      if (inp.aP) start(MINIGAMES[focus]);
       if (inp.escP) game.go('title');
     },
     render(ctx, inp) {
       bgFill(ctx, W, H, '#241e30', '#141019'); stripes(ctx, W, H, game.t);
-      text(ctx, '미니게임 연습', 60, 74, { size: 44, title: true });
-      text(ctx, '하나를 골라 봇 3명과 한 판만 합니다. 점수는 기록되지 않습니다.', 60, 108, { size: 16, weight: 600, color: COL.dim });
+      text(ctx, '미니게임 연습', X0, 62, { size: 40, title: true });
+      text(ctx, `${MINIGAMES.length}개 중 하나를 골라 봇 3명과 한 판만 합니다. 점수는 기록되지 않습니다.`, X0, 96, { size: 16, weight: 600, color: COL.dim });
       MINIGAMES.forEach((mg, i) => {
-        const x = 60 + (i % 3) * 395, y = 140 + Math.floor(i / 3) * 235, r = { x, y, w: 375, h: 215 };
-        const hot = inRect(r, inp.px, inp.py) && !inp.touch;
-        if (hot) focus = i;
-        ctx.fillStyle = focus === i ? COL.line : COL.panel; ctx.fillRect(x, y, r.w, r.h);
-        ctx.fillStyle = mg.color; ctx.fillRect(x, y, 6, r.h);
-        if (focus === i) { ctx.strokeStyle = mg.color; ctx.lineWidth = 3; ctx.strokeRect(x + 1.5, y + 1.5, r.w - 3, r.h - 3); }
-        ctx.fillStyle = mg.color; ctx.fillRect(x + 26, y + 24, measureBadge(ctx, mg.typeLabel) + 20, 28);
-        text(ctx, mg.typeLabel, x + 36, y + 44, { size: 15, weight: 800, color: '#1b1824' });
-        text(ctx, mg.name, x + 26, y + 98, { size: 34, title: true });
-        wrap(ctx, mg.rule, x + 26, y + 136, r.w - 52, 24, { size: 17, weight: 600, color: COL.sub });
-        if (inp.pP && inRect(r, inp.px, inp.py)) { sfx.go(); game.go('matchStart', { rounds: 1, fixed: mg.id, practice: true }); }
+        const r = rectOf(i);
+        if (!inp.touch && inRect(r, inp.px, inp.py)) focus = i;
+        const f = focus === i;
+        ctx.fillStyle = f ? COL.line : COL.panel; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.fillStyle = mg.color; ctx.fillRect(r.x, r.y, 5, r.h);
+        if (f) { ctx.strokeStyle = mg.color; ctx.lineWidth = 3; ctx.strokeRect(r.x + 1.5, r.y + 1.5, r.w - 3, r.h - 3); }
+        text(ctx, mg.typeLabel, r.x + 18, r.y + 30, { size: 13, weight: 800, color: mg.color });
+        text(ctx, mg.name, r.x + 18, r.y + 72, { size: mg.name.length > 8 ? 21 : 25, title: true });
+        if (inp.pP && inRect(r, inp.px, inp.py)) start(mg);
       });
-      if (button(ctx, inp, { x: W - 220, y: 40, w: 160, h: 50 }, '뒤로', { size: 20 })) { sfx.click(); game.go('title'); }
+      // rule of the focused game
+      const mg = MINIGAMES[focus];
+      const by = Y0 + 4 * (CH + GAP) + 6;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X0, by, C * CW + (C - 1) * GAP, 64);
+      ctx.fillStyle = mg.color; ctx.fillRect(X0, by, 5, 64);
+      text(ctx, mg.name, X0 + 20, by + 26, { size: 18, weight: 900, color: mg.color });
+      text(ctx, mg.rule, X0 + 20, by + 52, { size: 15, weight: 600, color: COL.sub });
+      if (button(ctx, inp, { x: W - X0 - 150, y: 34, w: 150, h: 48 }, '뒤로', { size: 20 })) { sfx.click(); game.go('title'); }
     },
   };
 }

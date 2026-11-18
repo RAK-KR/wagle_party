@@ -68,6 +68,14 @@ export const sfx = {
   good() { [523, 659, 784].forEach((f, i) => tone(f, 0.18, { type: 'triangle', vol: 0.14, at: i * 0.06 })); },
   bad() { tone(330, 0.18, { type: 'triangle', vol: 0.14 }); tone(247, 0.3, { type: 'triangle', vol: 0.14, at: 0.14 }); },
   emote() { tone(600, 0.06, { type: 'sine', vol: 0.14 }); tone(900, 0.1, { type: 'sine', vol: 0.1, at: 0.05 }); },
+  kick() { tone(150, 0.16, { type: 'sine', vol: 0.5, slide: 0.35 }); },
+  snare() { noise(0.12, { vol: 0.35, freq: 1800, q: 0.7 }); tone(220, 0.08, { type: 'triangle', vol: 0.12, slide: 0.6 }); },
+  hat() { noise(0.04, { vol: 0.12, freq: 8000, q: 0.8, type: 'highpass' }); },
+  perfect() { tone(784, 0.07, { type: 'triangle', vol: 0.12 }); tone(1175, 0.1, { type: 'triangle', vol: 0.1, at: 0.04 }); },
+  miss() { tone(180, 0.12, { type: 'sawtooth', vol: 0.06, slide: 0.7 }); },
+  pad(n) { const f = [330, 392, 494, 587][n % 4]; tone(f, 0.32, { type: 'triangle', vol: 0.2 }); tone(f * 2, 0.2, { type: 'sine', vol: 0.06 }); },
+  slide() { noise(0.5, { vol: 0.12, freq: 900, q: 0.5, sweep: 0.6 }); },
+  alarm() { tone(660, 0.12, { type: 'square', vol: 0.1 }); tone(660, 0.12, { type: 'square', vol: 0.1, at: 0.18 }); },
   spin() { tone(300 + Math.random() * 40, 0.04, { type: 'square', vol: 0.05 }); },
   fanfare() {
     const seq = [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.36], [784, 0.54], [1047, 0.66]];

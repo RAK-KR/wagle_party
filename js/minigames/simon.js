@@ -1,0 +1,122 @@
+// 순서 기억 — watch the pads light up, then repeat the order. One mistake and you are out. The sequence grows every round.
+import { sfx } from '../audio.js';
+import { W, H, COL, text, byDiff, clamp, shade } from './common.js';
+
+const CX = W / 2, CY = 392, PS = 128, MAXR = 14;
+const PADS = [
+  { dx: 0, dy: -1, col: '#ffcf3a', key: '↑' }, { dx: 1, dy: 0, col: '#5ed0d6', key: '→' },
+  { dx: 0, dy: 1, col: '#ff5d6c', key: '↓' }, { dx: -1, dy: 0, col: '#79c66b', key: '←' },
+];
+const padRect = (k) => ({ x: CX + PADS[k].dx * (PS + 14) - PS / 2, y: CY + PADS[k].dy * (PS + 14) - PS / 2, w: PS, h: PS });
+
+export default {
+  id: 'simon', name: '순서 기억', typeLabel: '기억 / 관찰', color: '#79c66b',
+  rule: '불이 켜지는 순서를 기억했다가 똑같이 누르세요. 틀리면 탈락이고, 판마다 하나씩 길어집니다.',
+  controls: [['입력', '방향키 / WASD / 칸 클릭']],
+  touch: { stick: false, a: false },
+
+  init(game, rng) {
+    const seq = []; for (let k = 0; k < MAXR + 3; k++) seq.push(rng.int(0, 3));
+    const st = { t: 0, seq, len: 3, phase: 'show', pt: 0, flash: -1, flashT: 0, pl: [0, 1, 2, 3].map(i => ({ i, alive: true, prog: 0, done: false, outRound: 0, lastPad: -1, padT: 0, plan: null, next: 0 })), endFlag: false, round: 1 };
+    return st;
+  },
+  stepTime(st) { return Math.max(0.3, 0.6 - st.round * 0.025); },
+  update(st, dt, inputs, game, rng, ended) {
+    st.t += dt; st.pt += dt;
+    if (st.phase === 'show') {
+      const per = this.stepTime(st), k = Math.floor((st.pt - 0.6) / per);
+      if (st.pt > 0.6 && k < st.len) {
+        const inStep = (st.pt - 0.6) - k * per;
+        const f = inStep < per * 0.72 ? st.seq[k] : -1;
+        if (f >= 0 && st.flash !== k) { st.flash = k; sfx.pad(st.seq[k]); }
+        st.lit = f;
+      } else st.lit = -1;
+      if (st.pt > 0.6 + per * st.len + 0.2) {
+        st.phase = 'input'; st.pt = 0; st.flash = -1;
+        for (const p of st.pl) { p.prog = 0; p.done = false; p.plan = null; }
+      }
+      return;
+    }
+    if (st.phase === 'input') {
+      const limit = 2.5 + st.len * 0.75;
+      for (const p of st.pl) {
+        if (!p.alive || p.done || ended) continue;
+        const inp = inputs[p.i];
+        let pad = inp.num ?? -1;
+        if (inp.upP) pad = 0; if (inp.rightP) pad = 1; if (inp.downP) pad = 2; if (inp.leftP) pad = 3;
+        if (p.i === game.local && inp.pP) for (let k = 0; k < 4; k++) { const r = padRect(k); if (inp.px >= r.x && inp.px <= r.x + r.w && inp.py >= r.y && inp.py <= r.y + r.h) pad = k; }
+        if (pad < 0) continue;
+        p.lastPad = pad; p.padT = st.t;
+        if (pad === st.seq[p.prog]) { p.prog++; if (p.i === game.local) sfx.pad(pad); if (p.prog >= st.len) { p.done = true; if (p.i === game.local) sfx.good(); } }
+        else { p.alive = false; p.outRound = st.round; if (p.i === game.local) sfx.bad(); else sfx.miss(); }
+      }
+      const waiting = st.pl.filter(p => p.alive && !p.done).length;
+      if (waiting === 0 || st.pt > limit) {
+        for (const p of st.pl) if (p.alive && !p.done) { p.alive = false; p.outRound = st.round; }
+        st.phase = 'judge'; st.pt = 0;
+      }
+      return;
+    }
+    if (st.phase === 'judge' && st.pt > 1.3) {
+      const alive = st.pl.filter(p => p.alive).length;
+      if (alive <= 1 || st.round >= MAXR) { st.phase = 'end'; return; }
+      st.round++; st.len++; st.phase = 'show'; st.pt = 0; st.flash = -1;
+    }
+  },
+  done(st) { return st.phase === 'end'; },
+  scores(st) { return st.pl.map(p => p.alive ? 10000 : p.outRound * 100 + p.prog); },
+  detail(st, i) { const p = st.pl[i]; return p.alive ? '끝까지 생존' : `${p.outRound + 2}개 순서에서 탈락`; },
+  hud(ctx, st) { text(ctx, `${st.len}개 순서`, W / 2, 33, { size: 22, weight: 900, align: 'center', color: '#79c66b' }); },
+
+  bot(st, i, game, rng) {
+    const p = st.pl[i];
+    if (st.phase !== 'input' || !p.alive || p.done) return {};
+    if (!p.plan) {
+      const cap = byDiff(game, [5, 7, 9]) + rng.int(-1, 1);
+      p.plan = st.seq.slice(0, st.len).map((v, k) => {
+        const pErr = (k >= 2 ? 0.01 : 0) + Math.max(0, st.len - cap) * 0.09;
+        return rng.next() < pErr ? (v + rng.int(1, 3)) % 4 : v;
+      });
+      p.next = st.pt + rng.range(0.5, 1.0);
+    }
+    if (st.pt >= p.next) { p.next = st.pt + rng.range(0.28, 0.55) + byDiff(game, [0.15, 0.06, 0]); return { num: p.plan[p.prog] }; }
+    return {};
+  },
+
+  render(ctx, st, game) {
+    const g = ctx.createRadialGradient(CX, CY, 40, CX, CY, 700); g.addColorStop(0, '#24324a'); g.addColorStop(1, '#0f1420');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const me = st.pl[game.local];
+    for (let k = 0; k < 4; k++) {
+      const r = padRect(k), pd = PADS[k];
+      const litShow = st.phase === 'show' && st.lit === k;
+      const litMe = st.phase === 'input' && me.lastPad === k && st.t - me.padT < 0.2;
+      ctx.fillStyle = litShow || litMe ? pd.col : shade(pd.col, -0.6);
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      if (litShow || litMe) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(r.x - 8, r.y - 8, r.w + 16, r.h + 16); ctx.restore(); }
+      ctx.strokeStyle = pd.col; ctx.lineWidth = 4; ctx.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+      text(ctx, pd.key, r.x + r.w / 2, r.y + r.h / 2 + 2, { size: 50, weight: 900, align: 'center', base: 'middle', color: litShow || litMe ? '#1b1824' : 'rgba(255,255,255,0.35)' });
+    }
+    // center status
+    const msg = st.phase === 'show' ? '잘 보세요' : st.phase === 'input' ? (me.alive ? (me.done ? '완료!' : '따라 누르세요') : '탈락') : st.phase === 'judge' ? '다음 판' : '';
+    ctx.fillStyle = '#1b1824'; ctx.fillRect(CX - PS / 2, CY - PS / 2, PS, PS);
+    text(ctx, msg, CX, CY + 2, { size: 20, weight: 900, align: 'center', base: 'middle', color: st.phase === 'input' ? COL.accent : COL.sub });
+    if (st.phase === 'input' && me.alive && !me.done) text(ctx, `${me.prog} / ${st.len}`, CX, CY + 30, { size: 16, weight: 800, align: 'center', color: COL.dim });
+    // players on both sides
+    for (let i = 0; i < 4; i++) {
+      const p = st.pl[i], pl = game.players[i];
+      const x = i < 2 ? 40 : W - 300, y = 90 + (i % 2) * 300, w = 260, h = 270;
+      ctx.fillStyle = shade(pl.color, p.alive ? -0.6 : -0.8); ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = pl.color; ctx.fillRect(x, y, w, 5);
+      game.drawPlayer(ctx, i, x + w / 2, y + 190, 120, { tag: true, expr: !p.alive ? 'lose' : p.done ? 'win' : 'idle', alpha: p.alive ? 1 : 0.55 });
+      text(ctx, pl.name, x + w / 2, y + 222, { size: 19, weight: 900, align: 'center', color: pl.color });
+      // progress dots (no colors, so the order is not revealed)
+      if (st.phase === 'input' || st.phase === 'judge') {
+        const n = st.len, dw = Math.min(16, (w - 30) / n);
+        for (let k = 0; k < n; k++) { ctx.fillStyle = k < p.prog ? (p.alive ? COL.good : COL.bad) : 'rgba(255,255,255,0.15)'; ctx.fillRect(x + 15 + k * dw, y + 244, dw - 3, 10); }
+      }
+      if (!p.alive) text(ctx, '탈락', x + w / 2, y + 60, { size: 34, title: true, align: 'center', color: COL.bad });
+      else if (p.done && st.phase === 'input') text(ctx, '성공!', x + w / 2, y + 60, { size: 30, title: true, align: 'center', color: COL.good });
+    }
+  },
+};

@@ -240,7 +240,8 @@ function drawFace(ctx, id, W, H, fy, col, outline, expr, t) {
     }
     if (lose) { eyeRound(ctx, -ex, fy, er * 0.9); eyeRound(ctx, ex, fy, er * 0.9); mouth(ctx, 'frown', 0, fy + 0.11, 0.12, lw);
       ctx.fillStyle = '#8fd3ff'; ctx.beginPath(); ctx.ellipse(-ex - 0.02, fy + 0.11, 0.018, 0.03, 0, 0, Math.PI * 2); ctx.fill(); }
-    else { eyeRound(ctx, -ex, fy, er * 1.1, 0, true); eyeRound(ctx, ex, fy, er * 1.1, 0, true); mouth(ctx, win ? 'big' : 'open', 0, fy + 0.1, 0.13, lw); }
+    else if (win) { eyeArc(ctx, -ex, fy, er * 1.1, true, lw * 1.2); eyeArc(ctx, ex, fy, er * 1.1, true, lw * 1.2); mouth(ctx, 'big', 0, fy + 0.1, 0.13, lw); }
+    else { eyeRound(ctx, -ex, fy, er * 1.1, 0, true); eyeRound(ctx, ex, fy, er * 1.1, 0, true); mouth(ctx, 'open', 0, fy + 0.1, 0.13, lw); }
   }
   else if (id === 'nook') {
     const gr = er * 1.45;
@@ -263,7 +264,7 @@ function drawFace(ctx, id, W, H, fy, col, outline, expr, t) {
   }
   else if (id === 'ciel') {
     blush(ctx, -ex - 0.05, cheekY + 0.01, 0.045, 'rgba(70,120,200,0.25)'); blush(ctx, ex + 0.05, cheekY + 0.01, 0.045, 'rgba(70,120,200,0.25)');
-    if (win) { eyeLidded(ctx, -ex, fy, er, 0.35, shade(col, 0.12), outline); eyeLidded(ctx, ex, fy, er, 0.35, shade(col, 0.12), outline); mouth(ctx, 'smile', 0, fy + 0.13, 0.11, lw);
+    if (win) { eyeArc(ctx, -ex, fy, er, true, lw); eyeArc(ctx, ex, fy, er, true, lw); mouth(ctx, 'smile', 0, fy + 0.13, 0.11, lw);
       drawNote(ctx, W * 0.45, fy - 0.25, t); }
     else if (lose) { eyeLidded(ctx, -ex, fy, er, 0.62, shade(col, 0.12), outline); eyeLidded(ctx, ex, fy, er, 0.62, shade(col, 0.12), outline); mouth(ctx, 'flat', 0, fy + 0.12, 0.08, lw); }
     else { eyeLidded(ctx, -ex, fy, er, 0.48, shade(col, 0.12), outline); eyeLidded(ctx, ex, fy, er, 0.48, shade(col, 0.12), outline); mouth(ctx, 'smirk', 0, fy + 0.12, 0.1, lw); }

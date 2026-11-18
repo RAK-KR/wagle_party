@@ -20,9 +20,17 @@ export function matchScenes(game) {
 
   function buildQueue(n) {
     const q = [];
+    const type = (id) => byId(id).typeLabel.split(' ')[0];
     while (q.length < n) {
-      let bag = M.rng.shuffle(MINIGAMES.map(m => m.id));
-      if (q.length && bag[0] === q[q.length - 1]) bag.push(bag.shift());
+      const bag = M.rng.shuffle(MINIGAMES.map(m => m.id));
+      // avoid the same control type twice in a row where possible
+      for (let k = 0; k < bag.length; k++) {
+        const prev = k ? bag[k - 1] : q[q.length - 1];
+        if (prev && type(bag[k]) === type(prev)) {
+          const j = bag.findIndex((id, jj) => jj > k && type(id) !== type(prev) && (k + 1 >= bag.length || jj === k + 1 || type(id) !== type(bag[k + 1])));
+          if (j > 0) [bag[k], bag[j]] = [bag[j], bag[k]];
+        }
+      }
       q.push(...bag);
     }
     return q.slice(0, n);
@@ -194,7 +202,7 @@ export function matchScenes(game) {
       pl = { t0: game.t, phase: 'count', endT: 0, lastCount: 4 };
       prevA.fill(false);
       setTouchLayout(Object.assign({ stick: false, a: false }, mg.touch || {}));
-      playMusic(mg.music || 'game');
+      playMusic(mg.music === 'none' ? null : (mg.music || 'game'));
     },
     update(dt, inp) {
       if (pauseUpdate(inp)) return;
