@@ -16,46 +16,50 @@ function peerOptions() {
 export function createNet(h) {
   let peer = null, hostConn = null;
   const conns = new Set();
+  // Every room gets its own Peer. Events from an older, already closed Peer can arrive late
+  // (slow server). They must be ignored, or they would cancel the room that was just made.
+  const live = (p) => p === peer;
 
-  function wire(conn) {
-    conn.on('data', (d) => h.data?.(conn, d));
-    conn.on('close', () => { conns.delete(conn); h.close?.(conn); });
-    conn.on('error', () => { conns.delete(conn); h.close?.(conn); });
+  function wire(p, conn) {
+    conn.on('data', (d) => { if (live(p)) h.data?.(conn, d); });
+    conn.on('close', () => { conns.delete(conn); if (live(p)) h.close?.(conn); });
+    conn.on('error', () => { conns.delete(conn); if (live(p)) h.close?.(conn); });
   }
 
   return {
     host(code) {
       this.destroy();
-      peer = new window.Peer(PREFIX + code, peerOptions());
-      peer.on('open', () => h.open?.());
-      peer.on('connection', (conn) => {
-        conn.on('open', () => { conns.add(conn); h.conn?.(conn); });
-        wire(conn);
+      const p = peer = new window.Peer(PREFIX + code, peerOptions());
+      p.on('open', () => { if (live(p)) h.open?.(); });
+      p.on('connection', (conn) => {
+        if (!live(p)) { try { conn.close(); } catch (e) { } return; }
+        conn.on('open', () => { if (!live(p)) return; conns.add(conn); h.conn?.(conn); });
+        wire(p, conn);
       });
-      peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { } });
-      peer.on('error', (e) => h.error?.(e.type || 'error'));
+      p.on('disconnected', () => { if (live(p) && !p.destroyed) { try { p.reconnect(); } catch (e) { } } });
+      p.on('error', (e) => { if (live(p)) h.error?.(e.type || 'error'); });
     },
     join(code) {
       this.destroy();
-      peer = new window.Peer(peerOptions());
-      peer.on('open', () => {
-        hostConn = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
-        hostConn.on('open', () => h.conn?.(hostConn));
-        wire(hostConn);
+      const p = peer = new window.Peer(peerOptions());
+      p.on('open', () => {
+        if (!live(p)) return;
+        const c = hostConn = p.connect(PREFIX + code, { reliable: true, serialization: 'json' });
+        c.on('open', () => { if (live(p)) h.conn?.(c); });
+        wire(p, c);
       });
-      peer.on('error', (e) => h.error?.(e.type || 'error'));
+      p.on('error', (e) => { if (live(p)) h.error?.(e.type || 'error'); });
     },
     send(conn, msg) { try { if (conn && conn.open) conn.send(msg); } catch (e) { } },
     toHost(msg) { this.send(hostConn, msg); },
     // skip peers whose channel is backed up (keeps lag from piling up)
     busy(conn) { const dc = conn && conn.dataChannel; return !!dc && dc.bufferedAmount > 256 * 1024; },
     destroy() {
-      try { for (const c of conns) c.close(); } catch (e) { }
-      conns.clear();
-      try { hostConn && hostConn.close(); } catch (e) { }
-      hostConn = null;
-      try { peer && peer.destroy(); } catch (e) { }
-      peer = null;
+      const old = peer, oldConns = [...conns], oldHost = hostConn;
+      peer = null; hostConn = null; conns.clear();     // mark as dead first, then close
+      try { for (const c of oldConns) c.close(); } catch (e) { }
+      try { oldHost && oldHost.close(); } catch (e) { }
+      try { old && old.destroy(); } catch (e) { }
     },
   };
 }

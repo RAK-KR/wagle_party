@@ -102,9 +102,13 @@ export function createOnline(game) {
   function trimChat() { if (o.chat.length > 60) o.chat.splice(0, o.chat.length - 60); }
   function bcast(msg, except = -1) { for (let s = 1; s < 4; s++) if (connOf[s] && s !== except) net.send(connOf[s], msg); }
   function pushLobby(go = false) { bcast({ t: 'lobby', lobby: o.lobby, go }); }
-  function fail(msg) { clearTimeout(joinTimer); o.error = msg; o.status = ''; net.destroy(); o.role = null; }
+  function fail(msg) { clearTimeout(joinTimer); o.error = msg; o.status = ''; net.destroy(); resetSeats(); o.role = null; }
+  function resetSeats() {
+    seatOf.clear();
+    for (let k = 0; k < 4; k++) { connOf[k] = null; buf[k] = null; lastSeen[k] = 0; game.remoteIn[k] = null; }
+  }
   function end(msg) {
-    clearTimeout(joinTimer); net.destroy();
+    clearTimeout(joinTimer); net.destroy(); resetSeats();
     o.role = null; o.following = false; o.snaps = []; o.lobby = null;
     game.local = 0; o.notice = msg ? { text: msg, t: performance.now() } : null;
     game.go(msg ? 'online' : 'title');
@@ -188,10 +192,12 @@ export function createOnline(game) {
   // ---------- public ----------
   Object.assign(o, {
     host(name) {
+      resetSeats(); lastFromHost = 0;
       o.name = name; o.error = ''; o.status = '방을 만드는 중...'; o.role = 'hosting'; hostTries = 0;
       o.code = newCode(); net.host(o.code);
     },
     join(code, name) {
+      resetSeats(); lastFromHost = nowS();
       o.name = name; o.error = ''; o.status = '방에 들어가는 중...'; o.role = 'joining'; o.code = code;
       net.join(code);
       clearTimeout(joinTimer);
